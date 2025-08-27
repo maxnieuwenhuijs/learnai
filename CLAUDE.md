@@ -1,7 +1,12 @@
 # Claude Code Init File - E-Learning Platform
 
+## IMPORTANT: Session Initialization
+**When starting a new session, ALWAYS read these files first:**
+1. `CLAUDE_INIT.md` - Complete project context and current status
+2. `context/IMPLEMENTATION_CONTEXT.md` - Detailed TODO list and requirements
+
 ## Project Overview
-You are working on "The Agency" - a multi-tenant SaaS e-learning platform designed to train and certify employees for compliance with the EU AI Act. The platform consists of a Node.js/Express backend API and a React frontend single-page application.
+You are working on an e-learning platform for EU AI Act compliance training. This is a multi-tenant SaaS platform with a Node.js/Express backend API and a React frontend single-page application.
 
 ## Tech Stack
 
@@ -12,16 +17,19 @@ You are working on "The Agency" - a multi-tenant SaaS e-learning platform design
   - **Host**: 209.38.40.156
   - **User**: root
   - **Password**: BoomBoom10!Baby
+  - **Database Name**: db (NOT elearning_platform)
 - **ORM**: Sequelize
-- **Authentication**: JWT (JSON Web Tokens) + OAuth 2.0 (Google, Microsoft)
-- **Process Manager**: PM2
+- **Authentication**: JWT (JSON Web Tokens) + OAuth 2.0 (Google, Microsoft planned)
+- **Server Port**: 5000
 
 ### Frontend
 - **Framework**: React v18.x with Vite
 - **Language**: JavaScript (`.js` and `.jsx` files)
-- **Styling**: Tailwind CSS + shadcn/ui component library
+- **Styling**: Tailwind CSS + shadcn/ui component library (PostCSS setup, NOT @tailwindcss/vite)
 - **Routing**: react-router-dom
-- **State Management**: React Context API + useState
+- **State Management**: React Context API (AuthContext, ThemeContext)
+- **Dev Port**: 5173
+- **UI Preferences**: Clean white backgrounds, dark mode support, no emojis unless requested
 
 ## Project Structure
 
@@ -124,6 +132,15 @@ Common commands (verify in package.json):
 
 - The platform must ensure compliance tracking for EU AI Act certification
 - All user activity in lessons must be tracked via the progress API
-- OAuth integration supports both Google and Microsoft accounts
+- OAuth integration planned for Google and Microsoft accounts (not yet implemented)
 - The frontend uses a heartbeat mechanism to track time spent in lessons
 - Manager dashboards aggregate team progress for compliance reporting
+- Mobile-first responsive design is required for all components
+- Test accounts available: participant@test.com, manager@test.com, admin@test.com (all use password123)
+
+## Quick Reference
+- **GitHub**: https://github.com/maxnieuwenhuijs/learnai
+- **Start Backend**: `cd server && npm run dev`
+- **Start Frontend**: `cd frontend && npm run dev`
+- **Current Status**: See CLAUDE_INIT.md
+- **TODO List**: See context/IMPLEMENTATION_CONTEXT.md
