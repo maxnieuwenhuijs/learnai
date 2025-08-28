@@ -2,7 +2,7 @@ const { Sequelize } = require('sequelize');
 
 // Don't call dotenv.config() here - it's already loaded in server.js
 // This prevents double loading which causes empty environment variables
-
+console.log("THE PASSWORD MY CODE SEES IS:", process.env.DB_PASSWORD);
 // Create Sequelize instance
 const sequelize = new Sequelize(
     process.env.DB_NAME || 'elearning_platform',
