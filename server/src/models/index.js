@@ -8,6 +8,10 @@ const Lesson = require('./Lesson');
 const CourseAssignment = require('./CourseAssignment');
 const UserProgress = require('./UserProgress');
 const Certificate = require('./Certificate');
+const Notification = require('./Notification');
+const CalendarEvent = require('./CalendarEvent');
+const ReportSchedule = require('./ReportSchedule');
+const ContentUpload = require('./ContentUpload');
 
 // Define associations
 
@@ -63,6 +67,40 @@ UserProgress.belongsTo(Lesson, { foreignKey: 'lesson_id', as: 'lesson' });
 Certificate.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 Certificate.belongsTo(Course, { foreignKey: 'course_id', as: 'course' });
 
+// Notification associations
+Notification.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+User.hasMany(Notification, { foreignKey: 'user_id', as: 'notifications' });
+
+// CalendarEvent associations
+CalendarEvent.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+CalendarEvent.belongsTo(Course, { foreignKey: 'course_id', as: 'course' });
+CalendarEvent.belongsTo(Company, { foreignKey: 'company_id', as: 'company' });
+CalendarEvent.belongsTo(Department, { foreignKey: 'department_id', as: 'department' });
+CalendarEvent.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+User.hasMany(CalendarEvent, { foreignKey: 'user_id', as: 'events' });
+User.hasMany(CalendarEvent, { foreignKey: 'created_by', as: 'createdEvents' });
+Course.hasMany(CalendarEvent, { foreignKey: 'course_id', as: 'events' });
+Company.hasMany(CalendarEvent, { foreignKey: 'company_id', as: 'events' });
+Department.hasMany(CalendarEvent, { foreignKey: 'department_id', as: 'events' });
+
+// ReportSchedule associations
+ReportSchedule.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+ReportSchedule.belongsTo(Company, { foreignKey: 'company_id', as: 'company' });
+ReportSchedule.belongsTo(Department, { foreignKey: 'department_id', as: 'department' });
+User.hasMany(ReportSchedule, { foreignKey: 'user_id', as: 'reportSchedules' });
+Company.hasMany(ReportSchedule, { foreignKey: 'company_id', as: 'reportSchedules' });
+Department.hasMany(ReportSchedule, { foreignKey: 'department_id', as: 'reportSchedules' });
+
+// ContentUpload associations
+ContentUpload.belongsTo(Course, { foreignKey: 'course_id', as: 'course' });
+ContentUpload.belongsTo(Module, { foreignKey: 'module_id', as: 'module' });
+ContentUpload.belongsTo(Lesson, { foreignKey: 'lesson_id', as: 'lesson' });
+ContentUpload.belongsTo(User, { foreignKey: 'uploaded_by', as: 'uploader' });
+Course.hasMany(ContentUpload, { foreignKey: 'course_id', as: 'uploads' });
+Module.hasMany(ContentUpload, { foreignKey: 'module_id', as: 'uploads' });
+Lesson.hasMany(ContentUpload, { foreignKey: 'lesson_id', as: 'uploads' });
+User.hasMany(ContentUpload, { foreignKey: 'uploaded_by', as: 'uploads' });
+
 module.exports = {
     Company,
     Department,
@@ -73,5 +111,9 @@ module.exports = {
     Lesson,
     CourseAssignment,
     UserProgress,
-    Certificate
+    Certificate,
+    Notification,
+    CalendarEvent,
+    ReportSchedule,
+    ContentUpload
 };

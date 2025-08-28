@@ -10,6 +10,9 @@ dotenv.config();
 // Import database configuration
 const { sequelize } = require('./config/database');
 
+// Import email queue service
+const emailQueueService = require('./services/emailQueue.service');
+
 // Create Express app
 const app = express();
 
@@ -73,11 +76,73 @@ const courseRoutes = require('./api/routes/courses.routes');
 const progressRoutes = require('./api/routes/progress.routes');
 const reportsRoutes = require('./api/routes/reports.routes');
 
+// Try to import optional routes with error handling
+let certificatesRoutes, teamRoutes, notificationsRoutes, calendarRoutes, emailRoutes;
+try {
+    certificatesRoutes = require('./api/routes/certificates.routes');
+    console.log('✅ Certificates routes loaded');
+} catch (err) {
+    console.error('❌ Failed to load certificates routes:', err.message);
+}
+
+try {
+    teamRoutes = require('./api/routes/team.routes');
+    console.log('✅ Team routes loaded');
+} catch (err) {
+    console.error('❌ Failed to load team routes:', err.message);
+}
+
+try {
+    notificationsRoutes = require('./api/routes/notifications.routes');
+    console.log('✅ Notifications routes loaded');
+} catch (err) {
+    console.error('❌ Failed to load notifications routes:', err.message);
+}
+
+try {
+    calendarRoutes = require('./api/routes/calendar.routes');
+    console.log('✅ Calendar routes loaded');
+} catch (err) {
+    console.error('❌ Failed to load calendar routes:', err.message);
+}
+
+try {
+    emailRoutes = require('./api/routes/email.routes');
+    console.log('✅ Email routes loaded');
+} catch (err) {
+    console.error('❌ Failed to load email routes:', err.message);
+}
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/reports', reportsRoutes);
+
+if (certificatesRoutes) {
+    app.use('/api/certificates', certificatesRoutes);
+    console.log('📌 Certificates routes registered at /api/certificates');
+}
+
+if (teamRoutes) {
+    app.use('/api/team', teamRoutes);
+    console.log('📌 Team routes registered at /api/team');
+}
+
+if (notificationsRoutes) {
+    app.use('/api/notifications', notificationsRoutes);
+    console.log('📌 Notifications routes registered at /api/notifications');
+}
+
+if (calendarRoutes) {
+    app.use('/api/calendar', calendarRoutes);
+    console.log('📌 Calendar routes registered at /api/calendar');
+}
+
+if (emailRoutes) {
+    app.use('/api/email', emailRoutes);
+    console.log('📌 Email routes registered at /api/email');
+}
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -86,6 +151,30 @@ app.get('/api/health', (req, res) => {
         message: 'E-learning Platform API is running',
         timestamp: new Date().toISOString()
     });
+});
+
+// Debug route to list all registered routes
+app.get('/api/routes', (req, res) => {
+    const routes = [];
+    app._router.stack.forEach((middleware) => {
+        if (middleware.route) {
+            routes.push({
+                path: middleware.route.path,
+                method: Object.keys(middleware.route.methods)[0].toUpperCase()
+            });
+        } else if (middleware.name === 'router') {
+            middleware.handle.stack.forEach((handler) => {
+                if (handler.route) {
+                    const path = middleware.regexp.source.replace(/\\\//g, '/').replace(/[\^$?.*+()]/g, '');
+                    routes.push({
+                        path: path + handler.route.path,
+                        method: Object.keys(handler.route.methods)[0].toUpperCase()
+                    });
+                }
+            });
+        }
+    });
+    res.json(routes);
 });
 
 // Error handling middleware
@@ -98,8 +187,9 @@ app.use((err, req, res, next) => {
     });
 });
 
-// 404 handler
+// 404 handler - MUST BE LAST
 app.use((req, res) => {
+    console.log(`404: ${req.method} ${req.path}`);
     res.status(404).json({
         success: false,
         message: 'Route not found'
@@ -121,6 +211,10 @@ async function startServer() {
             await sequelize.sync({ force: false });
             console.log('✅ Database models synchronized.');
         }
+        
+        // Start email queue service
+        emailQueueService.start();
+        console.log('📧 Email queue service started');
         
         // Start server
         app.listen(PORT, () => {

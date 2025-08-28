@@ -72,18 +72,18 @@ export function ParticipantDashboard() {
   };
 
   const getCourseStatus = (progress) => {
-    if (progress === 0) return { label: 'Not Started', color: 'bg-gray-100 text-gray-600' };
-    if (progress < 50) return { label: 'In Progress', color: 'bg-blue-100 text-blue-600' };
-    if (progress < 100) return { label: 'Almost Done', color: 'bg-yellow-100 text-yellow-600' };
-    return { label: 'Completed', color: 'bg-green-100 text-green-600' };
+    if (progress === 0) return { label: 'Not Started', color: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300' };
+    if (progress < 50) return { label: 'In Progress', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' };
+    if (progress < 100) return { label: 'Almost Done', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400' };
+    return { label: 'Completed', color: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' };
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="space-y-4">
-          <div className="animate-pulse bg-gray-200 h-8 w-48 rounded"></div>
-          <div className="animate-pulse bg-gray-200 h-32 w-64 rounded"></div>
+          <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-8 w-48 rounded"></div>
+          <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-32 w-64 rounded"></div>
         </div>
       </div>
     );
@@ -94,7 +94,7 @@ export function ParticipantDashboard() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Welcome Section with Continue Learning */}
-      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 text-white">
+      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 text-white">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div className="w-full lg:w-auto">
             <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2">Welcome back!</h2>
@@ -124,7 +124,7 @@ export function ParticipantDashboard() {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow bg-white dark:bg-gray-800">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
@@ -135,14 +135,14 @@ export function ParticipantDashboard() {
               </Badge>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Overall Progress</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{calculateOverallProgress()}%</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Overall Progress</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{calculateOverallProgress()}%</p>
               <Progress value={calculateOverallProgress()} className="mt-3 h-2" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow bg-white dark:bg-gray-800">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -151,16 +151,16 @@ export function ParticipantDashboard() {
               <Zap className="w-4 h-4 text-yellow-500" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Active Courses</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{courses.length}</p>
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Courses</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{courses.length}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                 {courses.filter(c => c.progressPercentage === 100).length} completed
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow bg-white dark:bg-gray-800">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -171,14 +171,14 @@ export function ParticipantDashboard() {
               </Badge>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Time Invested</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{formatTime(getTotalTimeSpent())}</p>
-              <p className="text-xs text-gray-500 mt-2">Total learning time</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Time Invested</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{formatTime(getTotalTimeSpent())}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Total learning time</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow bg-white dark:bg-gray-800">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
@@ -187,11 +187,11 @@ export function ParticipantDashboard() {
               <Star className="w-4 h-4 text-yellow-500" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Certificates</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Certificates</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
                 {userProgress?.certificates?.length || 0}
               </p>
-              <p className="text-xs text-gray-500 mt-2">Achievements earned</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Achievements earned</p>
             </div>
           </CardContent>
         </Card>
@@ -201,8 +201,8 @@ export function ParticipantDashboard() {
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
           <div>
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-900">My Courses</h3>
-            <p className="text-xs sm:text-sm text-gray-600 mt-1">Continue your learning journey</p>
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">My Courses</h3>
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">Continue your learning journey</p>
           </div>
           <Button variant="outline" size="sm" className="w-full sm:w-auto">
             Browse Catalog <ChevronRight className="w-4 h-4 ml-1" />
@@ -210,13 +210,13 @@ export function ParticipantDashboard() {
         </div>
 
         {courses.length === 0 ? (
-          <Card className="border-0 shadow-sm">
+          <Card className="border-0 shadow-sm bg-white dark:bg-gray-800">
             <CardContent className="text-center py-12">
-              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <BookOpen className="h-10 w-10 text-gray-400" />
+              <div className="w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                <BookOpen className="h-10 w-10 text-gray-400 dark:text-gray-500" />
               </div>
-              <h4 className="text-lg font-semibold text-gray-900 mb-2">No courses yet</h4>
-              <p className="text-gray-600 mb-4">Start your learning journey today</p>
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No courses yet</h4>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">Start your learning journey today</p>
               <Button>Browse Available Courses</Button>
             </CardContent>
           </Card>
@@ -227,7 +227,7 @@ export function ParticipantDashboard() {
               return (
                 <Card 
                   key={course.id} 
-                  className="border-0 shadow-sm hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                  className="border-0 shadow-sm hover:shadow-lg transition-all duration-200 cursor-pointer group bg-white dark:bg-gray-800"
                   onClick={() => navigate(`/course/${course.id}`)}
                 >
                   {/* Course Image Placeholder */}
@@ -257,8 +257,8 @@ export function ParticipantDashboard() {
                       {/* Progress Bar */}
                       <div>
                         <div className="flex justify-between text-sm mb-2">
-                          <span className="text-gray-600">Progress</span>
-                          <span className="font-semibold text-gray-900">
+                          <span className="text-gray-600 dark:text-gray-400">Progress</span>
+                          <span className="font-semibold text-gray-900 dark:text-gray-100">
                             {course.progressPercentage}%
                           </span>
                         </div>
@@ -267,11 +267,11 @@ export function ParticipantDashboard() {
 
                       {/* Course Stats */}
                       <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-1 text-gray-600">
+                        <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
                           <BookOpen className="w-4 h-4" />
                           <span>{course.completedLessons}/{course.totalLessons} lessons</span>
                         </div>
-                        <div className="flex items-center gap-1 text-gray-600">
+                        <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
                           <Clock className="w-4 h-4" />
                           <span>~{course.estimatedTime || '2h'}</span>
                         </div>
@@ -303,8 +303,8 @@ export function ParticipantDashboard() {
         <div>
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-xl font-semibold text-gray-900">My Certificates</h3>
-              <p className="text-sm text-gray-600 mt-1">Your achievements and certifications</p>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">My Certificates</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Your achievements and certifications</p>
             </div>
             <Button variant="outline" size="sm">
               View All <ChevronRight className="w-4 h-4 ml-1" />
@@ -320,11 +320,11 @@ export function ParticipantDashboard() {
                       <Award className="w-6 h-6 text-white" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900">{cert.courseTitle}</h4>
-                      <p className="text-sm text-gray-600 mt-1">
+                      <h4 className="font-semibold text-gray-900 dark:text-gray-100">{cert.courseTitle}</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                         Issued on {new Date(cert.issuedAt).toLocaleDateString()}
                       </p>
-                      <p className="text-xs text-gray-500 mt-2">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                         Certificate ID: {cert.certificateUid}
                       </p>
                     </div>

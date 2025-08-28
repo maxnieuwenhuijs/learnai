@@ -21,7 +21,7 @@ export function ComponentsTest() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-2">shadcn/ui Components Test Page</h1>
-          <p className="text-gray-600">Testing all components to ensure they're styled properly</p>
+          <p className="text-gray-600 dark:text-gray-400">Testing all components to ensure they're styled properly</p>
         </div>
 
         {/* Buttons Section */}
@@ -71,7 +71,7 @@ export function ComponentsTest() {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
               />
-              <p className="text-sm text-gray-500">You typed: {inputValue}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">You typed: {inputValue}</p>
             </div>
             <div className="grid w-full max-w-sm items-center gap-1.5">
               <Label htmlFor="password">Password</Label>
@@ -92,14 +92,14 @@ export function ComponentsTest() {
               <CardDescription>This is a card description</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600">Card content goes here. This is a basic card with header, content, and footer.</p>
+              <p className="text-gray-600 dark:text-gray-400">Card content goes here. This is a basic card with header, content, and footer.</p>
             </CardContent>
             <CardFooter>
               <Button className="w-full">Card Action</Button>
             </CardFooter>
           </Card>
 
-          <Card className="border-blue-200 bg-blue-50/50">
+          <Card className="bg-white dark:bg-gray-800 border-blue-200 bg-blue-50/50">
             <CardHeader>
               <CardTitle className="text-blue-900">Styled Card</CardTitle>
               <CardDescription className="text-blue-700">Custom colored card</CardDescription>
@@ -285,7 +285,7 @@ export function ComponentsTest() {
         </Card>
 
         {/* Combined Example */}
-        <Card className="border-2">
+        <Card className="bg-white dark:bg-gray-800 border-2">
           <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
             <div className="flex items-center justify-between">
               <div>
@@ -302,7 +302,7 @@ export function ComponentsTest() {
               </Avatar>
               <div className="flex-1">
                 <h3 className="font-semibold">Test Course</h3>
-                <p className="text-sm text-gray-500">Your progress in this course</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Your progress in this course</p>
               </div>
               <Badge className="bg-green-100 text-green-800">Active</Badge>
             </div>

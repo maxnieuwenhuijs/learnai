@@ -1,7 +1,7 @@
 const { Sequelize } = require('sequelize');
-const dotenv = require('dotenv');
 
-dotenv.config();
+// Don't call dotenv.config() here - it's already loaded in server.js
+// This prevents double loading which causes empty environment variables
 
 // Create Sequelize instance
 const sequelize = new Sequelize(

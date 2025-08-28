@@ -1,9 +1,18 @@
 # Claude Code Init File - E-Learning Platform
 
 ## IMPORTANT: Session Initialization
-**When starting a new session, ALWAYS read these files first:**
-1. `CLAUDE_INIT.md` - Complete project context and current status
-2. `context/IMPLEMENTATION_CONTEXT.md` - Detailed TODO list and requirements
+**When starting a new session, ALWAYS read these files in order:**
+1. `context/PROJECT_STATUS.md` - Current project status and completed features
+2. `context/IMPLEMENTATION_CONTEXT.md` - Detailed requirements and specifications
+3. `context/TODO_TRACKER.md` - Active TODO list with progress tracking
+
+## CRITICAL: TODO List Management
+**On EVERY work cycle:**
+1. Check the current TODO list in `context/TODO_TRACKER.md`
+2. Update completed tasks with ✅
+3. Mark in-progress items appropriately
+4. Add any newly discovered requirements
+5. Update the TODO_TRACKER.md file with session progress
 
 ## Project Overview
 You are working on an e-learning platform for EU AI Act compliance training. This is a multi-tenant SaaS platform with a Node.js/Express backend API and a React frontend single-page application.
@@ -142,5 +151,6 @@ Common commands (verify in package.json):
 - **GitHub**: https://github.com/maxnieuwenhuijs/learnai
 - **Start Backend**: `cd server && npm run dev`
 - **Start Frontend**: `cd frontend && npm run dev`
-- **Current Status**: See CLAUDE_INIT.md
-- **TODO List**: See context/IMPLEMENTATION_CONTEXT.md
+- **Current Status**: See `context/PROJECT_STATUS.md`
+- **Requirements**: See `context/IMPLEMENTATION_CONTEXT.md`
+- **Active TODOs**: See `context/TODO_TRACKER.md`

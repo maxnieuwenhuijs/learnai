@@ -1,6 +1,8 @@
-const { User, UserProgress, Lesson, Module, Course, Department } = require('../../models');
+const reportService = require('../../services/report.service');
+const { User, UserProgress, Lesson, Module, Course, Department, Certificate, Company } = require('../../models');
 const { Op } = require('sequelize');
 
+// Keep existing getTeamProgress function
 const getTeamProgress = async (req, res) => {
     try {
         // Check if user is a manager or higher
@@ -170,6 +172,168 @@ const getTeamProgress = async (req, res) => {
     }
 };
 
+// New: Get EU AI Act compliance report
+const getComplianceReport = async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        
+        // Get compliance data based on user's role and access level
+        const complianceData = await reportService.getComplianceStatus({
+            userId: req.user.id,
+            userRole: req.user.role,
+            companyId: req.user.company_id,
+            departmentId: req.user.department_id,
+            startDate,
+            endDate
+        });
+
+        res.status(200).json({
+            success: true,
+            data: complianceData
+        });
+    } catch (error) {
+        console.error('Error fetching compliance report:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch compliance report',
+            error: error.message
+        });
+    }
+};
+
+// New: Get department-wide analytics
+const getDepartmentAnalytics = async (req, res) => {
+    try {
+        const { departmentId, period = '30d' } = req.query;
+        
+        // Verify admin has access to the department
+        let targetDepartmentId = departmentId;
+        if (req.user.role === 'admin' && departmentId) {
+            // Verify department belongs to admin's company
+            const dept = await Department.findOne({
+                where: {
+                    id: departmentId,
+                    company_id: req.user.company_id
+                }
+            });
+            if (!dept) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Access denied to this department'
+                });
+            }
+        } else if (req.user.role === 'admin') {
+            // Get all departments in company
+            targetDepartmentId = null; // Will fetch all company departments
+        }
+
+        const analytics = await reportService.getDepartmentAnalytics({
+            companyId: req.user.company_id,
+            departmentId: targetDepartmentId,
+            period
+        });
+
+        res.status(200).json({
+            success: true,
+            data: analytics
+        });
+    } catch (error) {
+        console.error('Error fetching department analytics:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch department analytics',
+            error: error.message
+        });
+    }
+};
+
+// New: Export reports
+const exportReport = async (req, res) => {
+    try {
+        const { type } = req.params;
+        const { format = 'pdf', reportType = 'team', ...filters } = req.query;
+
+        // Validate export format
+        if (!['pdf', 'csv', 'excel'].includes(format)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid export format. Use pdf, csv, or excel.'
+            });
+        }
+
+        // Generate the report based on type
+        const reportData = await reportService.generateReport({
+            reportType: type,
+            userRole: req.user.role,
+            userId: req.user.id,
+            companyId: req.user.company_id,
+            departmentId: req.user.department_id,
+            filters
+        });
+
+        // Export the report
+        const exportResult = await reportService.exportReport({
+            data: reportData,
+            format,
+            reportType: type
+        });
+
+        // Set appropriate headers
+        const contentTypes = {
+            pdf: 'application/pdf',
+            csv: 'text/csv',
+            excel: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        };
+
+        const fileExtensions = {
+            pdf: 'pdf',
+            csv: 'csv',
+            excel: 'xlsx'
+        };
+
+        res.setHeader('Content-Type', contentTypes[format]);
+        res.setHeader('Content-Disposition', `attachment; filename="report-${type}-${Date.now()}.${fileExtensions[format]}"`);
+        
+        // Send the file
+        res.send(exportResult);
+    } catch (error) {
+        console.error('Error exporting report:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to export report',
+            error: error.message
+        });
+    }
+};
+
+// New: Get dashboard statistics
+const getDashboardStats = async (req, res) => {
+    try {
+        const { period = '7d' } = req.query;
+        
+        // Get customized dashboard stats based on user role
+        const stats = await reportService.getDashboardStats({
+            userId: req.user.id,
+            userRole: req.user.role,
+            companyId: req.user.company_id,
+            departmentId: req.user.department_id,
+            period
+        });
+
+        res.status(200).json({
+            success: true,
+            data: stats
+        });
+    } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch dashboard statistics',
+            error: error.message
+        });
+    }
+};
+
 // Helper function to format seconds into readable time
 function formatTime(seconds) {
     const hours = Math.floor(seconds / 3600);
@@ -182,5 +346,9 @@ function formatTime(seconds) {
 }
 
 module.exports = {
-    getTeamProgress
+    getTeamProgress,
+    getComplianceReport,
+    getDepartmentAnalytics,
+    exportReport,
+    getDashboardStats
 };
