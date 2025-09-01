@@ -27,7 +27,14 @@
       "Bash(pkill:*)",
       "Bash(npm run build:*)",
       "Bash(find:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(ping:*)",
+      "Bash(telnet:*)",
+      "Bash(git log:*)",
+      "Bash(mysql:*)",
+      "Read(c:\\Users\\maxni\\Desktop/**)",
+      "Read(c:\\Users\\maxni\\Desktop/**)",
+      "Read(c:\\Users\\maxni\\Desktop/**)"
     ],
     "deny": [],
     "ask": []

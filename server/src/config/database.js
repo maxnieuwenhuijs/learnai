@@ -5,8 +5,8 @@ const { Sequelize } = require('sequelize');
 console.log("THE PASSWORD MY CODE SEES IS:", process.env.DB_PASSWORD);
 // Create Sequelize instance
 const sequelize = new Sequelize(
-    process.env.DB_NAME || 'elearning_platform',
-    process.env.DB_USER || 'root',
+    process.env.DB_NAME || 'db',
+    process.env.DB_USER || 'learnai_app',
     process.env.DB_PASSWORD,
     {
         host: process.env.DB_HOST || 'localhost',
