@@ -13,7 +13,7 @@ router.use(authMiddleware);
 
 // Prompt Categories Routes
 router.get('/categories', promptsController.getCategories);
-router.post('/categories', requireRole(['admin', 'super_admin']), promptsController.createCategory);
+router.post('/categories', requireRole('admin', 'super_admin'), promptsController.createCategory);
 
 // Prompts Routes
 router.get('/', promptsController.getPrompts);
@@ -27,7 +27,7 @@ router.post('/:id/generate', promptsController.generateContent);
 router.get('/analytics/usage', promptsController.getPromptAnalytics);
 
 // Approval Workflow Routes
-router.get('/approvals/requests', requireRole(['manager', 'admin', 'super_admin']), promptsController.getApprovalRequests);
-router.put('/approvals/:id', requireRole(['manager', 'admin', 'super_admin']), promptsController.processApproval);
+router.get('/approvals/requests', requireRole('manager', 'admin', 'super_admin'), promptsController.getApprovalRequests);
+router.put('/approvals/:id', requireRole('manager', 'admin', 'super_admin'), promptsController.processApproval);
 
 module.exports = router;
