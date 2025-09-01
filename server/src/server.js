@@ -75,6 +75,7 @@ const authRoutes = require('./api/routes/auth.routes');
 const courseRoutes = require('./api/routes/courses.routes');
 const progressRoutes = require('./api/routes/progress.routes');
 const reportsRoutes = require('./api/routes/reports.routes');
+const promptsRoutes = require('./api/routes/prompts.routes');
 
 // Try to import optional routes with error handling
 let certificatesRoutes, teamRoutes, notificationsRoutes, calendarRoutes, emailRoutes;
@@ -113,11 +114,13 @@ try {
     console.error('❌ Failed to load email routes:', err.message);
 }
 
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/prompts', promptsRoutes);
 
 if (certificatesRoutes) {
     app.use('/api/certificates', certificatesRoutes);
@@ -143,6 +146,7 @@ if (emailRoutes) {
     app.use('/api/email', emailRoutes);
     console.log('📌 Email routes registered at /api/email');
 }
+
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

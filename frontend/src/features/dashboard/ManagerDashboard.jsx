@@ -19,7 +19,8 @@ import {
   ChevronRight,
   Target,
   Filter,
-  Download
+  Download,
+  MessageSquare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -140,7 +141,7 @@ export function ManagerDashboard() {
       </div>
 
       {/* Team Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between">
@@ -196,6 +197,21 @@ export function ManagerDashboard() {
               </div>
               <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
                 <Award className="w-6 h-6 text-yellow-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Team Prompts</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">7</p>
+                <p className="text-xs text-gray-500 mt-2">Available templates</p>
+              </div>
+              <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                <MessageSquare className="w-6 h-6 text-indigo-600" />
               </div>
             </div>
           </CardContent>

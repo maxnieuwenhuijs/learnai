@@ -20,7 +20,8 @@ import {
   HelpCircle,
   User,
   Sun,
-  Moon
+  Moon,
+  MessageSquare
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,12 @@ export function DashboardLayout({ children }) {
       title: 'Dashboard',
       icon: LayoutDashboard,
       path: '/dashboard',
+      roles: ['participant', 'manager', 'admin']
+    },
+    {
+      title: 'Prompts',
+      icon: MessageSquare,
+      path: '/prompts',
       roles: ['participant', 'manager', 'admin']
     },
     {

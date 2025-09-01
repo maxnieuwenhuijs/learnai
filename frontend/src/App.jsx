@@ -12,6 +12,7 @@ import { CalendarPage } from '@/pages/CalendarPage';
 import { TeamPage } from '@/pages/TeamPage';
 import { ReportsPage } from '@/pages/ReportsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
+import { PromptsPage } from '@/pages/PromptsPage';
 import { ComponentsTest } from '@/pages/ComponentsTest';
 
 // Admin Pages
@@ -41,6 +42,7 @@ function App() {
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/team" element={<TeamPage />} />
             <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/prompts" element={<PromptsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             
             {/* Admin Routes - Protected with role check */}

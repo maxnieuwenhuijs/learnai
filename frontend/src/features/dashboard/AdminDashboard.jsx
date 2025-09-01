@@ -7,7 +7,8 @@ import {
   Activity,
   Calendar,
   ChevronRight,
-  MoreVertical
+  MoreVertical,
+  MessageSquare
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,7 +25,9 @@ export function AdminDashboard() {
     totalUsers: 1234,
     activeCourses: 42,
     completionRate: 78,
-    certificates: 856
+    certificates: 856,
+    totalPrompts: 7,
+    promptUsage: 15
   });
 
   const recentActivities = [
@@ -67,7 +70,7 @@ export function AdminDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -135,6 +138,24 @@ export function AdminDashboard() {
               </div>
               <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
                 <Award className="w-6 h-6 text-yellow-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Prompt Templates</p>
+                <p className="text-2xl font-bold text-gray-900 mt-2">{stats.totalPrompts}</p>
+                <div className="flex items-center mt-2 text-sm">
+                  <MessageSquare className="w-4 h-4 text-blue-500 mr-1" />
+                  <span className="text-blue-600">{stats.promptUsage} times used</span>
+                </div>
+              </div>
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <MessageSquare className="w-6 h-6 text-blue-600" />
               </div>
             </div>
           </CardContent>
@@ -227,6 +248,10 @@ export function AdminDashboard() {
             <div className="flex gap-3">
               <Button variant="secondary" className="bg-white text-indigo-600 hover:bg-gray-100">
                 Add Course
+              </Button>
+              <Button variant="secondary" className="bg-white text-indigo-600 hover:bg-gray-100">
+                <MessageSquare className="w-4 h-4 mr-1" />
+                Manage Prompts
               </Button>
               <Button variant="secondary" className="bg-white text-indigo-600 hover:bg-gray-100">
                 Invite Users

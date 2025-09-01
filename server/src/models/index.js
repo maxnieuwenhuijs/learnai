@@ -12,6 +12,11 @@ const Notification = require('./Notification');
 const CalendarEvent = require('./CalendarEvent');
 const ReportSchedule = require('./ReportSchedule');
 const ContentUpload = require('./ContentUpload');
+const PromptCategory = require('./PromptCategory');
+const Prompt = require('./Prompt');
+const PromptVersion = require('./PromptVersion');
+const PromptApproval = require('./PromptApproval');
+const PromptUsage = require('./PromptUsage');
 
 // Define associations
 
@@ -101,6 +106,40 @@ Module.hasMany(ContentUpload, { foreignKey: 'module_id', as: 'uploads' });
 Lesson.hasMany(ContentUpload, { foreignKey: 'lesson_id', as: 'uploads' });
 User.hasMany(ContentUpload, { foreignKey: 'uploaded_by', as: 'uploads' });
 
+// Prompt Library associations
+PromptCategory.belongsTo(Company, { foreignKey: 'company_id', as: 'company' });
+Company.hasMany(PromptCategory, { foreignKey: 'company_id', as: 'promptCategories' });
+
+Prompt.belongsTo(PromptCategory, { foreignKey: 'category_id', as: 'category' });
+Prompt.belongsTo(Company, { foreignKey: 'company_id', as: 'company' });
+Prompt.belongsTo(Department, { foreignKey: 'department_id', as: 'department' });
+Prompt.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+Prompt.belongsTo(Prompt, { foreignKey: 'parent_id', as: 'parent' });
+Prompt.hasMany(Prompt, { foreignKey: 'parent_id', as: 'children' });
+
+PromptCategory.hasMany(Prompt, { foreignKey: 'category_id', as: 'prompts' });
+Company.hasMany(Prompt, { foreignKey: 'company_id', as: 'prompts' });
+Department.hasMany(Prompt, { foreignKey: 'department_id', as: 'prompts' });
+User.hasMany(Prompt, { foreignKey: 'created_by', as: 'createdPrompts' });
+
+PromptVersion.belongsTo(Prompt, { foreignKey: 'prompt_id', as: 'prompt' });
+PromptVersion.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+Prompt.hasMany(PromptVersion, { foreignKey: 'prompt_id', as: 'versions' });
+User.hasMany(PromptVersion, { foreignKey: 'created_by', as: 'createdPromptVersions' });
+
+PromptApproval.belongsTo(Prompt, { foreignKey: 'prompt_id', as: 'prompt' });
+PromptApproval.belongsTo(PromptVersion, { foreignKey: 'version_id', as: 'version' });
+PromptApproval.belongsTo(User, { foreignKey: 'requested_by', as: 'requester' });
+PromptApproval.belongsTo(User, { foreignKey: 'reviewer_id', as: 'reviewer' });
+Prompt.hasMany(PromptApproval, { foreignKey: 'prompt_id', as: 'approvals' });
+User.hasMany(PromptApproval, { foreignKey: 'requested_by', as: 'requestedApprovals' });
+User.hasMany(PromptApproval, { foreignKey: 'reviewer_id', as: 'reviewedApprovals' });
+
+PromptUsage.belongsTo(Prompt, { foreignKey: 'prompt_id', as: 'prompt' });
+PromptUsage.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+Prompt.hasMany(PromptUsage, { foreignKey: 'prompt_id', as: 'usage' });
+User.hasMany(PromptUsage, { foreignKey: 'user_id', as: 'promptUsage' });
+
 module.exports = {
     Company,
     Department,
@@ -115,5 +154,10 @@ module.exports = {
     Notification,
     CalendarEvent,
     ReportSchedule,
-    ContentUpload
+    ContentUpload,
+    PromptCategory,
+    Prompt,
+    PromptVersion,
+    PromptApproval,
+    PromptUsage
 };

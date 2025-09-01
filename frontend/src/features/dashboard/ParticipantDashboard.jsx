@@ -17,7 +17,8 @@ import {
   Target,
   Zap,
   ChevronRight,
-  Star
+  Star,
+  MessageSquare
 } from 'lucide-react';
 
 export function ParticipantDashboard() {
@@ -192,6 +193,22 @@ export function ParticipantDashboard() {
                 {userProgress?.certificates?.length || 0}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Achievements earned</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow bg-white dark:bg-gray-800 cursor-pointer" onClick={() => navigate('/prompts')}>
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                <MessageSquare className="w-6 h-6 text-purple-600" />
+              </div>
+              <ChevronRight className="w-4 h-4 text-purple-500" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Prompt Library</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">7</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Ready to use templates</p>
             </div>
           </CardContent>
         </Card>
