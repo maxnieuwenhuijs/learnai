@@ -13,7 +13,6 @@ import { TeamPage } from '@/pages/TeamPage';
 import { ReportsPage } from '@/pages/ReportsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { PromptsPage } from '@/pages/PromptsPage';
-import { ComponentsTest } from '@/pages/ComponentsTest';
 
 // Admin Pages
 import AdminCoursesPage from '@/pages/admin/AdminCoursesPage';
@@ -31,7 +30,6 @@ function App() {
           {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth-success" element={<AuthSuccessPage />} />
-          <Route path="/test" element={<ComponentsTest />} />
           
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
