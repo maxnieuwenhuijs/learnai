@@ -1,16 +1,28 @@
 {
-  "name": "server",
+  "name": "howtoworkwith-ai-server",
   "version": "1.0.0",
+  "description": "E-learning Platform Backend API for howtoworkwith.ai",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop ecosystem.config.js",
+    "pm2:restart": "pm2 restart ecosystem.config.js",
+    "pm2:delete": "pm2 delete ecosystem.config.js",
+    "pm2:logs": "pm2 logs",
+    "pm2:status": "pm2 status",
+    "db:sync": "node -e \"require('./src/config/database').sequelize.sync({force: false})\"",
+    "db:seed": "node seed-comprehensive-data.js",
+    "postinstall": "echo 'Installation completed. Please configure your .env file and run: npm run pm2:start'"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "keywords": ["elearning", "api", "nodejs", "express", "mysql"],
+  "author": "HowToWorkWith.AI",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
   "dependencies": {
     "axios": "^1.11.0",
     "bcrypt": "^6.0.0",

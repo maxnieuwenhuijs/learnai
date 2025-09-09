@@ -36,8 +36,12 @@ app.use(cors({
         if (!origin) return callback(null, true);
         
         if (process.env.NODE_ENV === 'production') {
-            // In production, use the environment variable
-            if (origin === process.env.FRONTEND_URL) {
+            // In production, check against allowed domains
+            const allowedDomains = process.env.FRONTEND_URL ? 
+                process.env.FRONTEND_URL.split(',').map(url => url.trim()) : 
+                ['https://howtoworkwith.ai', 'https://h2ww.ai'];
+            
+            if (allowedDomains.includes(origin)) {
                 return callback(null, true);
             }
         } else {
