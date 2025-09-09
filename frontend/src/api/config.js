@@ -1,6 +1,19 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Auto-detect API URL based on environment
+const getApiBaseUrl = () => {
+  // Check if we're in production (on the server)
+  if (window.location.hostname === 'app.howtoworkwith.ai' || window.location.hostname === 'h2ww.ai') {
+    // Production: use the same domain with the same protocol (HTTP/HTTPS)
+    const protocol = window.location.protocol;
+    return `${protocol}//${window.location.hostname}/api`;
+  }
+  
+  // Development: use localhost
+  return 'http://localhost:5000/api';
+};
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || getApiBaseUrl();
 
 // Create axios instance
 const api = axios.create({
