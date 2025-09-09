@@ -60,42 +60,12 @@ elearn/
 
 ## 📊 Functionaliteit Status
 
-### ✅ **Volledig Werkend (60%)**
-- Authentication systeem (OAuth, JWT)
-- Prompts systeem (volledig functioneel)
-- Basis API endpoints
-- Role-based toegang (Participant, Manager, Admin)
-- Moderne UI/UX met Tailwind CSS
+Voor een complete functionaliteit analyse, zie [FUNCTIONALITY_ANALYSIS.md](FUNCTIONALITY_ANALYSIS.md).
 
-### ⚠️ **Gedeeltelijk Werkend (25%)**
-- My Courses (UI klaar, mock data)
-- Reports (layout klaar, geen real-time data)
-- Team Management (interface klaar, mock data)
-- Calendar (layout klaar, geen API integratie)
-
-### ❌ **Ontbrekend (15%)**
-- Course Management (creation/editing)
-- Global Search functionaliteit
-- File Upload systeem
-- Real-time features
-- Advanced Analytics
-
-## 🎯 **Implementatie Roadmap**
-
-### **Week 1-2: Kritieke Features**
-- Course Management System
-- Real API integratie (vervang mock data)
-- Global Search functionaliteit
-
-### **Week 3-4: Belangrijke Features**
-- File Upload & Content Management
-- Certificate System
-- Settings & Profile Management
-
-### **Week 5-6: Advanced Features**
-- Real-time Updates
-- Advanced Analytics & Charts
-- Performance Optimization
+**Korte samenvatting:**
+- ✅ **Volledig Werkend (60%)**: Authentication, Prompts, API endpoints
+- ⚠️ **Gedeeltelijk Werkend (25%)**: My Courses, Reports, Team, Calendar (mock data)
+- ❌ **Ontbrekend (15%)**: Course Management, Search, File Upload, Real-time features
 
 ## 📖 Documentatie
 
