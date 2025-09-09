@@ -89,95 +89,14 @@ export function TeamPage() {
       setTeamStats(stats);
     } catch (error) {
       console.error('Error loading team data:', error);
-      // If API fails, use empty data instead of mock
-      const mockTeamMembers = [
-        {
-          id: 1,
-          name: 'Alice Johnson',
-          email: 'alice.johnson@company.com',
-          avatar: '',
-          role: 'participant',
-          department: 'Engineering',
-          location: 'New York',
-          joinDate: '2024-01-15',
-          lastActive: '2024-08-27T15:30:00Z',
-          progress: {
-            overallCompletion: 85,
-            coursesCompleted: 3,
-            coursesInProgress: 2,
-            totalCourses: 5,
-            certificates: 2,
-            timeSpent: 14400, // in seconds
-            avgScore: 92
-          },
-          courses: [
-            { title: 'AI Act Fundamentals', completion: 100, score: 95 },
-            { title: 'Risk Management', completion: 75, score: 88 },
-            { title: 'Data Privacy in AI', completion: 60, score: null }
-          ]
-        },
-        {
-          id: 2,
-          name: 'Bob Smith',
-          email: 'bob.smith@company.com',
-          avatar: '',
-          role: 'participant',
-          department: 'Legal',
-          location: 'San Francisco',
-          joinDate: '2024-02-01',
-          lastActive: '2024-08-28T09:15:00Z',
-          progress: {
-            overallCompletion: 45,
-            coursesCompleted: 1,
-            coursesInProgress: 3,
-            totalCourses: 5,
-            certificates: 1,
-            timeSpent: 7200,
-            avgScore: 86
-          },
-          courses: [
-            { title: 'AI Act Fundamentals', completion: 100, score: 89 },
-            { title: 'Risk Management', completion: 30, score: null },
-            { title: 'Compliance Framework', completion: 15, score: null }
-          ]
-        },
-        {
-          id: 3,
-          name: 'Carol Davis',
-          email: 'carol.davis@company.com',
-          avatar: '',
-          role: 'participant',
-          department: 'Product',
-          location: 'Remote',
-          joinDate: '2024-01-20',
-          lastActive: '2024-08-26T18:45:00Z',
-          progress: {
-            overallCompletion: 95,
-            coursesCompleted: 4,
-            coursesInProgress: 1,
-            totalCourses: 5,
-            certificates: 4,
-            timeSpent: 18000,
-            avgScore: 94
-          },
-          courses: [
-            { title: 'AI Act Fundamentals', completion: 100, score: 96 },
-            { title: 'Risk Management', completion: 100, score: 91 },
-            { title: 'Data Privacy in AI', completion: 100, score: 95 },
-            { title: 'Compliance Framework', completion: 85, score: null }
-          ]
-        }
-      ];
-
-      const mockStats = {
-        totalMembers: mockTeamMembers.length,
-        activeMembers: mockTeamMembers.filter(m => new Date() - new Date(m.lastActive) < 7 * 24 * 60 * 60 * 1000).length,
-        averageCompletion: Math.round(mockTeamMembers.reduce((sum, m) => sum + m.progress.overallCompletion, 0) / mockTeamMembers.length),
-        totalCertificates: mockTeamMembers.reduce((sum, m) => sum + m.progress.certificates, 0)
-      };
-
-      setTeamMembers(mockTeamMembers);
-      setTeamStats(mockStats);
+      // Start completely empty
+      setTeamMembers([]);
+      setTeamStats({
+        totalMembers: 0,
+        activeMembers: 0,
+        averageCompletion: 0,
+        totalCertificates: 0
+      });
     } finally {
       setLoading(false);
     }
@@ -201,10 +120,10 @@ export function TeamPage() {
   };
 
   const getCompletionColor = (completion) => {
-    if (completion >= 80) return 'text-green-600 bg-green-100';
-    if (completion >= 60) return 'text-blue-600 bg-blue-100';
-    if (completion >= 40) return 'text-yellow-600 bg-yellow-100';
-    return 'text-red-600 bg-red-100';
+    if (completion >= 80) return 'text-gray-900 dark:text-gray-100 bg-gray-200 dark:bg-gray-700';
+    if (completion >= 60) return 'text-gray-800 dark:text-gray-200 bg-gray-150 dark:bg-gray-750';
+    if (completion >= 40) return 'text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800';
+    return 'text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-850';
   };
 
   const filteredMembers = teamMembers.filter(member =>
@@ -247,75 +166,75 @@ export function TeamPage() {
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         {/* Header Section */}
-        <div className="bg-gradient-to-r from-green-500 to-teal-600 rounded-xl p-6 text-white">
+        <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
-              <h1 className="text-2xl lg:text-3xl font-bold mb-2">Team Management</h1>
-              <p className="text-green-100">Monitor and manage your team's learning progress</p>
+              <h1 className="text-4xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Team Management</h1>
+              <p className="text-gray-600 dark:text-gray-400">Monitor and manage your team's learning progress</p>
             </div>
             <div className="flex items-center gap-4">
-              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold">{teamStats.totalMembers}</div>
-                <div className="text-sm text-green-100">Team Members</div>
+              <div className="bg-white dark:bg-gray-700 rounded-lg p-4 text-center border border-gray-200 dark:border-gray-600">
+                <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{teamStats.totalMembers}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Team Members</div>
               </div>
-              <Users className="w-16 h-16 text-green-200 hidden lg:block" />
+              <Users className="w-16 h-16 text-gray-400 dark:text-gray-500 hidden lg:block" />
             </div>
           </div>
         </div>
 
         {/* Team Statistics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="bg-white dark:bg-gray-800 border-0 shadow-sm">
+          <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Users className="w-6 h-6 text-blue-600" />
+                <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+                  <Users className="w-6 h-6 text-gray-600 dark:text-gray-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Members</p>
-                  <p className="text-2xl font-bold text-gray-900">{teamStats.totalMembers}</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Members</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{teamStats.totalMembers}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white dark:bg-gray-800 border-0 shadow-sm">
+          <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <UserCheck className="w-6 h-6 text-green-600" />
+                <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+                  <UserCheck className="w-6 h-6 text-gray-600 dark:text-gray-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Active This Week</p>
-                  <p className="text-2xl font-bold text-gray-900">{teamStats.activeMembers}</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Active This Week</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{teamStats.activeMembers}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white dark:bg-gray-800 border-0 shadow-sm">
+          <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-purple-600" />
+                <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-gray-600 dark:text-gray-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Avg Completion</p>
-                  <p className="text-2xl font-bold text-gray-900">{teamStats.averageCompletion}%</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Avg Completion</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{teamStats.averageCompletion}%</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white dark:bg-gray-800 border-0 shadow-sm">
+          <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <Award className="w-6 h-6 text-yellow-600" />
+                <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+                  <Award className="w-6 h-6 text-gray-600 dark:text-gray-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Certificates</p>
-                  <p className="text-2xl font-bold text-gray-900">{teamStats.totalCertificates}</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Certificates</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{teamStats.totalCertificates}</p>
                 </div>
               </div>
             </CardContent>
@@ -377,7 +296,7 @@ export function TeamPage() {
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-4">
                             {/* Avatar */}
-                            <Avatar className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center">
+                            <Avatar className="w-12 h-12 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center">
                               {member.name.split(' ').map(n => n[0]).join('')}
                             </Avatar>
                             
@@ -474,7 +393,7 @@ export function TeamPage() {
                   {filteredMembers.map((member) => (
                     <div key={member.id} className="border rounded-lg p-4">
                       <div className="flex items-center gap-3 mb-4">
-                        <Avatar className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center">
+                        <Avatar className="w-10 h-10 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center">
                           {member.name.split(' ').map(n => n[0]).join('')}
                         </Avatar>
                         <div>

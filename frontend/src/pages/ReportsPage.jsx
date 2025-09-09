@@ -77,85 +77,27 @@ export function ReportsPage() {
       setComplianceData(transformedComplianceData);
     } catch (error) {
       console.error('Error loading report data:', error);
-      // If API fails, use fallback data
-      const mockReportData = {
+      // Start completely empty
+      setReportData({
         overview: {
-          totalLearners: 125,
-          activeThisMonth: 98,
-          completionRate: 73,
-          averageScore: 87,
-          certificatesIssued: 45,
-          complianceStatus: 85
+          totalLearners: 0,
+          activeThisMonth: 0,
+          completionRate: 0,
+          averageScore: 0,
+          certificatesIssued: 0,
+          complianceStatus: 0
         },
-        departmentBreakdown: [
-          { name: 'Engineering', learners: 45, completion: 78, avgScore: 89 },
-          { name: 'Legal', learners: 20, completion: 92, avgScore: 94 },
-          { name: 'Product', learners: 35, completion: 68, avgScore: 85 },
-          { name: 'Marketing', learners: 25, completion: 60, avgScore: 82 }
-        ],
-        courseProgress: [
-          { course: 'AI Act Fundamentals', enrolled: 125, completed: 89, completion: 71 },
-          { course: 'Risk Management', enrolled: 98, completed: 62, completion: 63 },
-          { course: 'Data Privacy in AI', enrolled: 87, completed: 45, completion: 52 },
-          { course: 'Compliance Framework', enrolled: 76, completed: 28, completion: 37 }
-        ],
-        timeSeriesData: [
-          { month: 'Jan', completions: 12, enrollments: 45 },
-          { month: 'Feb', completions: 18, enrollments: 38 },
-          { month: 'Mar', completions: 24, enrollments: 42 },
-          { month: 'Apr', completions: 31, enrollments: 35 },
-          { month: 'May', completions: 28, enrollments: 40 },
-          { month: 'Jun', completions: 35, enrollments: 48 }
-        ]
-      };
-
-      const mockComplianceData = {
-        overallStatus: 'good', // 'excellent', 'good', 'warning', 'critical'
-        complianceScore: 85,
-        requirements: [
-          { 
-            id: 1, 
-            name: 'AI Act Training Completion', 
-            status: 'compliant', 
-            percentage: 89, 
-            required: 90,
-            description: 'All employees must complete AI Act fundamentals training'
-          },
-          { 
-            id: 2, 
-            name: 'Risk Assessment Certification', 
-            status: 'warning', 
-            percentage: 67, 
-            required: 80,
-            description: 'Risk assessment certification for AI system developers'
-          },
-          { 
-            id: 3, 
-            name: 'Data Privacy Training', 
-            status: 'critical', 
-            percentage: 45, 
-            required: 100,
-            description: 'Mandatory data privacy training for all staff'
-          },
-          { 
-            id: 4, 
-            name: 'Annual Compliance Review', 
-            status: 'compliant', 
-            percentage: 100, 
-            required: 100,
-            description: 'Annual compliance assessment completed'
-          }
-        ],
-        riskAreas: [
-          { area: 'High-Risk AI Systems', score: 75, status: 'warning' },
-          { area: 'Data Protection', score: 60, status: 'critical' },
-          { area: 'Algorithm Transparency', score: 85, status: 'good' },
-          { area: 'Human Oversight', score: 90, status: 'excellent' }
-        ]
-      };
-
-      setReportData(mockReportData);
-      setComplianceData(mockComplianceData);
+        departmentBreakdown: [],
+        courseProgress: [],
+        timeSeriesData: []
+      });
+      setComplianceData({
+        overallStatus: 'unknown',
+        complianceScore: 0,
+        requirements: [],
+        upcomingDeadlines: [],
+        riskAreas: []
+      });
     } finally {
       setLoading(false);
     }
@@ -163,12 +105,12 @@ export function ReportsPage() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'excellent': return 'bg-green-100 text-green-800';
-      case 'good': return 'bg-blue-100 text-blue-800';
-      case 'compliant': return 'bg-green-100 text-green-800';
-      case 'warning': return 'bg-yellow-100 text-yellow-800';
-      case 'critical': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'excellent': return 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100';
+      case 'good': return 'bg-gray-150 dark:bg-gray-750 text-gray-800 dark:text-gray-200';
+      case 'compliant': return 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100';
+      case 'warning': return 'bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-gray-100';
+      case 'critical': return 'bg-gray-400 dark:bg-gray-500 text-gray-900 dark:text-gray-100';
+      default: return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300';
     }
   };
 

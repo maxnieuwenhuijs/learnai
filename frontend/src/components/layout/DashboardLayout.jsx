@@ -21,7 +21,10 @@ import {
   User,
   Sun,
   Moon,
-  MessageSquare
+  MessageSquare,
+  Building,
+  Database,
+  Shield
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -54,8 +57,28 @@ export function DashboardLayout({ children }) {
       title: 'Dashboard',
       icon: LayoutDashboard,
       path: '/dashboard',
-      roles: ['participant', 'manager', 'admin']
+      roles: ['participant', 'manager', 'admin', 'super_admin']
     },
+    // Super Admin Only
+    {
+      title: 'Platform Admin',
+      icon: Shield,
+      path: '/admin/super-admin',
+      roles: ['super_admin']
+    },
+    {
+      title: 'Companies',
+      icon: Building,
+      path: '/admin/super-admin/companies',
+      roles: ['super_admin']
+    },
+    {
+      title: 'Global Courses',
+      icon: Database,
+      path: '/admin/courses',
+      roles: ['super_admin']
+    },
+    // Regular navigation
     {
       title: 'Prompts',
       icon: MessageSquare,
@@ -105,26 +128,29 @@ export function DashboardLayout({ children }) {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 z-40 h-screen transition-all duration-300 ${
+        className={`fixed left-0 top-0 z-40 h-screen transition-all duration-300 ease-apple ${
           sidebarOpen ? 'w-64' : 'w-20'
-        } bg-card dark:bg-gray-800 border-r border-border dark:border-gray-700 hidden lg:block`}
+        } bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 hidden lg:block`}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-white" />
+        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-100 dark:border-gray-700">
+          <div className="flex items-center gap-3 group cursor-pointer" onClick={() => navigate('/dashboard')}>
+            <div className="w-10 h-10 bg-gray-900 dark:bg-gray-100 rounded-lg flex items-center justify-center transition-all duration-200 ease-apple group-hover:scale-105 group-active:scale-95 shadow-sm">
+              <GraduationCap className="w-6 h-6 text-white dark:text-gray-900 transition-transform group-hover:rotate-12" />
             </div>
             {sidebarOpen && (
-              <span className="text-xl font-bold text-gray-900 dark:text-gray-100">EduLearn</span>
+              <div className="transition-all duration-200 ease-apple">
+                <span className="text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight">HowToWorkWith.AI</span>
+                <div className="text-xs text-gray-500 dark:text-gray-400 -mt-1">E-Learning Platform</div>
+              </div>
             )}
           </div>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors lg:block hidden"
+            className="p-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 ease-apple active:scale-98 lg:block hidden"
           >
             <Menu className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           </button>
@@ -139,20 +165,20 @@ export function DashboardLayout({ children }) {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
+                className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ease-apple group active:scale-[0.98] ${
                   isActive
-                    ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300'}`} />
+                <Icon className={`w-5 h-5 ${isActive ? 'text-white dark:text-gray-900' : 'text-gray-500 dark:text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300'}`} />
                 {sidebarOpen && (
-                  <span className={`font-medium ${isActive ? 'text-indigo-600 dark:text-indigo-400' : ''}`}>
+                  <span className={`font-medium text-sm ${isActive ? 'text-white dark:text-gray-900' : ''}`}>
                     {item.title}
                   </span>
                 )}
                 {!sidebarOpen && (
-                  <div className="absolute left-full ml-6 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white dark:text-gray-100 text-sm rounded-md invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all whitespace-nowrap">
+                  <div className="absolute left-full ml-6 px-3 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm rounded-lg invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all whitespace-nowrap shadow-lg">
                     {item.title}
                   </div>
                 )}
@@ -164,13 +190,13 @@ export function DashboardLayout({ children }) {
         {/* Help Section */}
         {sidebarOpen && (
           <div className="absolute bottom-4 left-4 right-4">
-            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 dark:from-indigo-600 dark:to-purple-700 rounded-xl p-4 text-white">
-              <HelpCircle className="w-6 h-6 mb-2" />
-              <h4 className="font-semibold mb-1">Need Help?</h4>
-              <p className="text-xs opacity-90 mb-3">
+            <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+              <HelpCircle className="w-6 h-6 mb-2 text-gray-500 dark:text-gray-400" />
+              <h4 className="font-semibold mb-1 text-gray-900 dark:text-gray-100">Need Help?</h4>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
                 Check our documentation or contact support
               </p>
-              <Button size="sm" variant="secondary" className="w-full bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+              <Button size="sm" variant="secondary" className="w-full">
                 Get Help
               </Button>
             </div>
@@ -193,11 +219,14 @@ export function DashboardLayout({ children }) {
         }`}
       >
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-white" />
+          <div className="flex items-center gap-3 group cursor-pointer" onClick={() => navigate('/dashboard')}>
+            <div className="w-10 h-10 bg-gray-900 dark:bg-gray-100 rounded-lg flex items-center justify-center transition-all duration-200 ease-apple group-hover:scale-105 group-active:scale-95 shadow-sm">
+              <GraduationCap className="w-6 h-6 text-white dark:text-gray-900 transition-transform group-hover:rotate-12" />
             </div>
-            <span className="text-xl font-bold text-gray-900 dark:text-gray-100">EduLearn</span>
+            <div className="transition-all duration-200 ease-apple">
+              <span className="text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight">HowToWorkWith.AI</span>
+              <div className="text-xs text-gray-500 dark:text-gray-400 -mt-1">E-Learning Platform</div>
+            </div>
           </div>
           <button
             onClick={() => setMobileMenuOpen(false)}
@@ -234,14 +263,14 @@ export function DashboardLayout({ children }) {
       {/* Main Content */}
       <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
         {/* Top Header */}
-        <header className="sticky top-0 z-30 bg-card dark:bg-gray-800 border-b border-border dark:border-gray-700">
+        <header className="sticky top-0 z-30 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center justify-between h-16 px-4 sm:px-6">
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors lg:hidden"
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 ease-apple active:scale-[0.98] lg:hidden"
             >
-              <Menu className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+              <Menu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             </button>
 
             {/* Search Bar - Hidden on mobile, shown on desktop */}
@@ -251,14 +280,14 @@ export function DashboardLayout({ children }) {
                 <Input
                   type="search"
                   placeholder="Search courses, lessons..."
-                  className="pl-10 pr-4 py-2 w-full bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 focus:bg-white dark:focus:bg-gray-600 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
+                  className="pl-10 pr-4 py-2.5 w-full bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-lg focus:bg-white dark:focus:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 transition-all duration-200 ease-apple focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 focus:ring-opacity-20"
                 />
               </div>
             </div>
 
             {/* Mobile Search Button */}
             <Button variant="ghost" size="icon" className="sm:hidden">
-              <Search className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+              <Search className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             </Button>
 
             {/* Right Section */}
@@ -268,19 +297,18 @@ export function DashboardLayout({ children }) {
                 variant="ghost"
                 size="icon"
                 onClick={toggleTheme}
-                className="rounded-lg"
               >
                 {theme === 'light' ? (
-                  <Moon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                  <Moon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                 ) : (
-                  <Sun className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                  <Sun className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                 )}
               </Button>
 
               {/* Notifications - Hidden on mobile */}
               <Button variant="ghost" size="icon" className="relative hidden sm:flex">
-                <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                <Bell className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-gray-600 dark:bg-gray-400 rounded-full"></span>
               </Button>
 
               {/* User Menu */}
@@ -323,7 +351,7 @@ export function DashboardLayout({ children }) {
         </header>
 
         {/* Page Content */}
-        <main className="p-4 sm:p-6 lg:p-8">
+        <main className="p-4 sm:p-6 lg:p-8 animate-fade-in">
           {children}
         </main>
       </div>

@@ -42,72 +42,9 @@ export function NotificationCenter() {
       // });
       // const data = await response.json();
       
-      // Mock data for demonstration
-      const mockNotifications = [
-        {
-          id: 1,
-          type: 'course_update',
-          title: 'New Module Available',
-          message: 'Module 5: Advanced Compliance has been added to EU AI Act Fundamentals',
-          icon: BookOpen,
-          color: 'text-blue-600',
-          bgColor: 'bg-blue-100',
-          timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-          read: false,
-          actionUrl: '/courses/1'
-        },
-        {
-          id: 2,
-          type: 'deadline',
-          title: 'Assignment Due Tomorrow',
-          message: 'Risk Assessment Quiz is due in 24 hours',
-          icon: Calendar,
-          color: 'text-orange-600',
-          bgColor: 'bg-orange-100',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-          read: false,
-          actionUrl: '/courses/2'
-        },
-        {
-          id: 3,
-          type: 'achievement',
-          title: 'Certificate Earned!',
-          message: 'Congratulations! You\'ve earned a certificate for AI Act Fundamentals',
-          icon: Award,
-          color: 'text-green-600',
-          bgColor: 'bg-green-100',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-          read: true,
-          actionUrl: '/certificates'
-        },
-        {
-          id: 4,
-          type: 'system',
-          title: 'System Maintenance',
-          message: 'Scheduled maintenance on Sunday, 2 AM - 4 AM EST',
-          icon: Settings,
-          color: 'text-gray-600',
-          bgColor: 'bg-gray-100',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2), // 2 days ago
-          read: true,
-          actionUrl: null
-        },
-        {
-          id: 5,
-          type: 'announcement',
-          title: 'New Team Member',
-          message: 'Sarah Johnson has joined your learning team',
-          icon: Users,
-          color: 'text-purple-600',
-          bgColor: 'bg-purple-100',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), // 3 days ago
-          read: true,
-          actionUrl: '/team'
-        }
-      ];
-
-      setNotifications(mockNotifications);
-      setUnreadCount(mockNotifications.filter(n => !n.read).length);
+      // Start completely empty
+      setNotifications([]);
+      setUnreadCount(0);
     } catch (error) {
       console.error('Error loading notifications:', error);
     } finally {

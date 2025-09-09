@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -78,69 +79,25 @@ function AdminCoursesPage() {
         status: statusFilter
       });
       
-      const response = await api.get(`/api/admin/courses?${params}`);
+      const response = await api.get(`/admin/courses?${params}`);
       if (response.data) {
         setCourses(response.data.courses || []);
         setTotalPages(response.data.totalPages || 1);
       }
     } catch (error) {
       console.error('Error fetching courses:', error);
-      // For now, use mock data
-      setCourses(getMockCourses());
-      setTotalPages(3);
+      // Start completely empty
+      setCourses([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
   };
 
-  const getMockCourses = () => [
-    {
-      id: 1,
-      title: 'Introduction to EU AI Act',
-      description: 'Comprehensive overview of the EU AI Act regulations',
-      category: 'Compliance',
-      difficulty: 'beginner',
-      duration_hours: 3,
-      module_count: 5,
-      lesson_count: 15,
-      enrolled_count: 245,
-      completion_rate: 78,
-      is_published: true,
-      created_at: '2025-01-15'
-    },
-    {
-      id: 2,
-      title: 'Risk Management in AI Systems',
-      description: 'Learn to identify and manage risks in AI implementations',
-      category: 'Risk Management',
-      difficulty: 'intermediate',
-      duration_hours: 6,
-      module_count: 8,
-      lesson_count: 24,
-      enrolled_count: 189,
-      completion_rate: 65,
-      is_published: true,
-      created_at: '2025-01-20'
-    },
-    {
-      id: 3,
-      title: 'Advanced AI Compliance Strategies',
-      description: 'Deep dive into compliance strategies for high-risk AI systems',
-      category: 'Advanced',
-      difficulty: 'advanced',
-      duration_hours: 10,
-      module_count: 12,
-      lesson_count: 36,
-      enrolled_count: 87,
-      completion_rate: 45,
-      is_published: false,
-      created_at: '2025-02-01'
-    }
-  ];
 
   const handleCreateCourse = async () => {
     try {
-      const response = await api.post('/api/admin/courses', formData);
+      const response = await api.post('/admin/courses', formData);
       if (response.data) {
         toast({
           title: 'Success',
@@ -163,7 +120,7 @@ function AdminCoursesPage() {
 
   const handleEditCourse = async () => {
     try {
-      const response = await api.put(`/api/admin/courses/${selectedCourse.id}`, formData);
+      const response = await api.put(`/admin/courses/${selectedCourse.id}`, formData);
       if (response.data) {
         toast({
           title: 'Success',
@@ -188,7 +145,7 @@ function AdminCoursesPage() {
     }
 
     try {
-      await api.delete(`/api/admin/courses/${courseId}`);
+      await api.delete(`/admin/courses/${courseId}`);
       toast({
         title: 'Success',
         description: 'Course deleted successfully'
@@ -205,7 +162,7 @@ function AdminCoursesPage() {
 
   const handlePublishToggle = async (courseId, isPublished) => {
     try {
-      await api.patch(`/api/admin/courses/${courseId}/publish`, {
+      await api.patch(`/admin/courses/${courseId}/publish`, {
         is_published: !isPublished
       });
       toast({
@@ -224,7 +181,7 @@ function AdminCoursesPage() {
 
   const handleDuplicateCourse = async (courseId) => {
     try {
-      const response = await api.post(`/api/admin/courses/${courseId}/duplicate`);
+      const response = await api.post(`/admin/courses/${courseId}/duplicate`);
       toast({
         title: 'Success',
         description: 'Course duplicated successfully'
@@ -241,23 +198,24 @@ function AdminCoursesPage() {
 
   const getDifficultyColor = (difficulty) => {
     switch (difficulty) {
-      case 'beginner': return 'bg-green-100 text-green-800';
-      case 'intermediate': return 'bg-yellow-100 text-yellow-800';
-      case 'advanced': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'beginner': return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300';
+      case 'intermediate': return 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
+      case 'advanced': return 'bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-gray-100';
+      default: return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300';
     }
   };
 
   const getStatusColor = (isPublished) => {
-    return isPublished ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800';
+    return isPublished ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300';
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
+    <DashboardLayout>
+      <div className="space-y-6">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Course Management</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-4xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Course Management</h1>
+        <p className="text-gray-600 dark:text-gray-400">
           Create, manage, and organize your e-learning courses
         </p>
       </div>
@@ -266,49 +224,57 @@ function AdminCoursesPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
               Total Courses
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">3 drafts</p>
+            <div className="text-3xl font-semibold text-gray-900 dark:text-gray-100">{courses.length}</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {courses.filter(c => !c.is_published).length} drafts
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
               Total Enrollments
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">521</div>
-            <p className="text-xs text-green-600">+12% this month</p>
+            <div className="text-3xl font-semibold text-gray-900 dark:text-gray-100">
+              {courses.reduce((sum, c) => sum + (c.enrolled_count || 0), 0)}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Across all courses</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
               Avg. Completion
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">67%</div>
-            <p className="text-xs text-muted-foreground">Across all courses</p>
+            <div className="text-3xl font-semibold text-gray-900 dark:text-gray-100">
+              {courses.length > 0 ? Math.round(courses.reduce((sum, c) => sum + (c.completion_rate || 0), 0) / courses.length) : 0}%
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Across all courses</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
               Active Learners
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">342</div>
-            <p className="text-xs text-muted-foreground">This week</p>
+            <div className="text-3xl font-semibold text-gray-900 dark:text-gray-100">
+              {courses.reduce((sum, c) => sum + (c.enrolled_count || 0), 0)}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">This week</p>
           </CardContent>
         </Card>
       </div>
@@ -544,7 +510,8 @@ function AdminCoursesPage() {
           </Button>
         </div>
       )}
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }
 

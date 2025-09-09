@@ -21,6 +21,11 @@ import ModuleManagerPage from '@/pages/admin/ModuleManagerPage';
 import QuizBuilderPage from '@/pages/admin/QuizBuilderPage';
 import ContentUploadPage from '@/pages/admin/ContentUploadPage';
 
+// Super Admin Pages
+import SuperAdminDashboard from '@/pages/admin/SuperAdminDashboard';
+import SuperAdminCompaniesPage from '@/pages/admin/SuperAdminCompaniesPage';
+import CompanyDetailPage from '@/pages/admin/CompanyDetailPage';
+
 function App() {
   return (
     <ThemeProvider>
@@ -49,6 +54,11 @@ function App() {
             <Route path="/admin/courses/:courseId/modules/:moduleId" element={<ModuleManagerPage />} />
             <Route path="/admin/quiz-builder/:quizId" element={<QuizBuilderPage />} />
             <Route path="/admin/content" element={<ContentUploadPage />} />
+            
+            {/* Super Admin Routes - Protected with super_admin role check */}
+            <Route path="/admin/super-admin" element={<SuperAdminDashboard />} />
+            <Route path="/admin/super-admin/companies" element={<SuperAdminCompaniesPage />} />
+            <Route path="/admin/companies/:companyId/dashboard" element={<CompanyDetailPage />} />
           </Route>
           
           {/* Default Redirect */}

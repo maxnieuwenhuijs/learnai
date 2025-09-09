@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BookOpen, Clock, Award, Play, Search, Filter, Calendar, Target, TrendingUp, Users, BookMarked, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { coursesApi } from '@/api/courses';
 
 export function MyCoursesPage() {
   const navigate = useNavigate();
@@ -28,141 +29,40 @@ export function MyCoursesPage() {
   const loadCourses = async () => {
     try {
       setLoading(true);
-      // This would be replaced with actual API call
-      // const response = await api.getCourses();
+      const response = await coursesApi.getAssignedCourses();
       
-      // Mock data for demonstration
-      const mockCourses = [
-        {
-          id: 1,
-          title: 'EU AI Act Fundamentals',
-          description: 'Complete introduction to the European AI Act regulations and compliance requirements',
-          category: 'compliance',
-          duration: '4 hours',
-          modules: 12,
-          completedModules: 8,
-          progress: 67,
-          status: 'in-progress',
-          deadline: '2024-09-15',
-          instructor: 'Dr. Sarah Johnson',
-          difficulty: 'beginner',
-          lastAccessed: '2024-08-27',
-          nextLesson: 'Module 9: Risk Assessment Framework',
-          estimatedCompletion: '1.5 hours',
-          thumbnail: '/api/placeholder/400/200',
-          enrolled: 325,
-          rating: 4.8,
-          certificate: true,
-          quizScore: 85
-        },
-        {
-          id: 2,
-          title: 'Risk Assessment for AI Systems',
-          description: 'Learn to identify, evaluate and mitigate risks in AI implementations',
-          category: 'technical',
-          duration: '6 hours',
-          modules: 15,
-          completedModules: 15,
-          progress: 100,
-          status: 'completed',
-          completedDate: '2024-08-20',
-          instructor: 'Prof. Michael Chen',
-          difficulty: 'intermediate',
-          lastAccessed: '2024-08-20',
-          thumbnail: '/api/placeholder/400/200',
-          enrolled: 280,
-          rating: 4.9,
-          certificate: true,
-          certificateEarned: true,
-          finalScore: 92
-        },
-        {
-          id: 3,
-          title: 'Data Governance and AI Ethics',
-          description: 'Comprehensive guide to ethical AI development and data management',
-          category: 'ethics',
-          duration: '5 hours',
-          modules: 10,
-          completedModules: 3,
-          progress: 30,
-          status: 'in-progress',
-          deadline: '2024-10-01',
-          instructor: 'Emma Williams',
-          difficulty: 'intermediate',
-          lastAccessed: '2024-08-25',
-          nextLesson: 'Module 4: Privacy by Design',
-          estimatedCompletion: '3.5 hours',
-          thumbnail: '/api/placeholder/400/200',
-          enrolled: 412,
-          rating: 4.7,
-          certificate: true,
-          quizScore: null
-        },
-        {
-          id: 4,
-          title: 'Technical Documentation for AI Systems',
-          description: 'Master the art of creating comprehensive technical documentation for AI projects',
-          category: 'technical',
-          duration: '3 hours',
-          modules: 8,
-          completedModules: 0,
-          progress: 0,
-          status: 'not-started',
-          deadline: '2024-11-01',
-          instructor: 'James Anderson',
-          difficulty: 'advanced',
-          thumbnail: '/api/placeholder/400/200',
-          enrolled: 156,
-          rating: 4.6,
-          certificate: true
-        },
-        {
-          id: 5,
-          title: 'AI Act Compliance for Healthcare',
-          description: 'Specialized training for AI compliance in healthcare applications',
-          category: 'compliance',
-          duration: '4.5 hours',
-          modules: 11,
-          completedModules: 11,
-          progress: 100,
-          status: 'completed',
-          completedDate: '2024-08-10',
-          instructor: 'Dr. Lisa Martinez',
-          difficulty: 'advanced',
-          thumbnail: '/api/placeholder/400/200',
-          enrolled: 198,
-          rating: 4.9,
-          certificate: true,
-          certificateEarned: true,
-          finalScore: 88
-        },
-        {
-          id: 6,
-          title: 'Introduction to Machine Learning Safety',
-          description: 'Foundational concepts in ML safety and robustness',
-          category: 'technical',
-          duration: '7 hours',
-          modules: 18,
-          completedModules: 5,
-          progress: 28,
-          status: 'in-progress',
-          deadline: '2024-09-30',
-          instructor: 'Dr. Robert Kim',
-          difficulty: 'beginner',
-          lastAccessed: '2024-08-26',
-          nextLesson: 'Module 6: Adversarial Testing',
-          estimatedCompletion: '5 hours',
-          thumbnail: '/api/placeholder/400/200',
-          enrolled: 567,
-          rating: 4.8,
-          certificate: true,
-          quizScore: 78
-        }
-      ];
+      // Transform API response to match expected format
+      const transformedCourses = response.map(course => ({
+        id: course.id,
+        title: course.title,
+        description: course.description,
+        category: course.category || 'general',
+        duration: course.estimatedDuration || '0 hours',
+        modules: course.modules?.length || 0,
+        completedModules: course.completedModules || 0,
+        progress: course.progress || 0,
+        status: course.status || 'not-started',
+        deadline: course.deadline,
+        instructor: course.instructor,
+        difficulty: course.difficulty || 'beginner',
+        lastAccessed: course.lastAccessed,
+        nextLesson: course.nextLesson,
+        estimatedCompletion: course.estimatedCompletion,
+        thumbnail: course.thumbnail,
+        enrolled: course.enrolledCount || 0,
+        rating: course.rating || 0,
+        certificate: course.hasCertificate || false,
+        certificateEarned: course.certificateEarned || false,
+        finalScore: course.finalScore,
+        quizScore: course.quizScore,
+        completedDate: course.completedDate
+      }));
 
-      setCourses(mockCourses);
+      setCourses(transformedCourses);
     } catch (error) {
       console.error('Error loading courses:', error);
+      // Fallback to empty array on error
+      setCourses([]);
     } finally {
       setLoading(false);
     }
@@ -197,19 +97,19 @@ export function MyCoursesPage() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'in-progress': return 'bg-blue-100 text-blue-800';
-      case 'not-started': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'completed': return 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100';
+      case 'in-progress': return 'bg-gray-150 dark:bg-gray-750 text-gray-800 dark:text-gray-200';
+      case 'not-started': return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300';
+      default: return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300';
     }
   };
 
   const getDifficultyColor = (difficulty) => {
     switch (difficulty) {
-      case 'beginner': return 'bg-green-100 text-green-800';
-      case 'intermediate': return 'bg-yellow-100 text-yellow-800';
-      case 'advanced': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'beginner': return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300';
+      case 'intermediate': return 'bg-gray-150 dark:bg-gray-750 text-gray-800 dark:text-gray-200';
+      case 'advanced': return 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100';
+      default: return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300';
     }
   };
 
@@ -256,32 +156,32 @@ export function MyCoursesPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header with Stats */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg p-6 text-white">
-          <h1 className="text-3xl font-bold mb-6">My Learning Journey</h1>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <div>
-              <p className="text-blue-100">Total Courses</p>
-              <p className="text-2xl font-bold">{stats.totalCourses}</p>
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-8 border border-gray-200 dark:border-gray-700 shadow-sm">
+          <h1 className="text-4xl font-semibold text-gray-900 dark:text-gray-100 mb-8 tracking-tight">My Learning Journey</h1>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+            <div className="text-center">
+              <p className="text-gray-500 dark:text-gray-400 text-sm font-medium mb-2">Total Courses</p>
+              <p className="text-3xl font-semibold text-gray-900 dark:text-gray-100">{stats.totalCourses}</p>
             </div>
-            <div>
-              <p className="text-blue-100">Completed</p>
-              <p className="text-2xl font-bold">{stats.completedCourses}</p>
+            <div className="text-center">
+              <p className="text-gray-500 dark:text-gray-400 text-sm font-medium mb-2">Completed</p>
+              <p className="text-3xl font-semibold text-gray-900 dark:text-gray-100">{stats.completedCourses}</p>
             </div>
-            <div>
-              <p className="text-blue-100">In Progress</p>
-              <p className="text-2xl font-bold">{stats.inProgressCourses}</p>
+            <div className="text-center">
+              <p className="text-gray-500 dark:text-gray-400 text-sm font-medium mb-2">In Progress</p>
+              <p className="text-3xl font-semibold text-gray-900 dark:text-gray-100">{stats.inProgressCourses}</p>
             </div>
-            <div>
-              <p className="text-blue-100">Total Hours</p>
-              <p className="text-2xl font-bold">{stats.totalHours.toFixed(1)}</p>
+            <div className="text-center">
+              <p className="text-gray-500 dark:text-gray-400 text-sm font-medium mb-2">Total Hours</p>
+              <p className="text-3xl font-semibold text-gray-900 dark:text-gray-100">{stats.totalHours.toFixed(1)}</p>
             </div>
-            <div>
-              <p className="text-blue-100">Avg Progress</p>
-              <p className="text-2xl font-bold">{stats.averageProgress}%</p>
+            <div className="text-center">
+              <p className="text-gray-500 dark:text-gray-400 text-sm font-medium mb-2">Avg Progress</p>
+              <p className="text-3xl font-semibold text-gray-900 dark:text-gray-100">{stats.averageProgress}%</p>
             </div>
-            <div>
-              <p className="text-blue-100">Certificates</p>
-              <p className="text-2xl font-bold">{stats.certificatesEarned}</p>
+            <div className="text-center">
+              <p className="text-gray-500 dark:text-gray-400 text-sm font-medium mb-2">Certificates</p>
+              <p className="text-3xl font-semibold text-gray-900 dark:text-gray-100">{stats.certificatesEarned}</p>
             </div>
           </div>
         </div>
@@ -295,15 +195,15 @@ export function MyCoursesPage() {
               placeholder="Search courses..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 rounded-lg bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 focus:bg-white dark:focus:bg-gray-600 transition-all duration-200 ease-apple focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
           <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger className="w-full md:w-[200px]">
+            <SelectTrigger className="w-full md:w-[200px] rounded-lg bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-650 transition-all duration-200 ease-apple">
               <Filter className="h-4 w-4 mr-2" />
               <SelectValue placeholder="Category" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="rounded-lg border-gray-200 dark:border-gray-600">
               <SelectItem value="all">All Categories</SelectItem>
               <SelectItem value="compliance">Compliance</SelectItem>
               <SelectItem value="technical">Technical</SelectItem>
@@ -311,11 +211,11 @@ export function MyCoursesPage() {
             </SelectContent>
           </Select>
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-full md:w-[200px]">
+            <SelectTrigger className="w-full md:w-[200px] rounded-lg bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-650 transition-all duration-200 ease-apple">
               <TrendingUp className="h-4 w-4 mr-2" />
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="rounded-lg border-gray-200 dark:border-gray-600">
               <SelectItem value="recent">Recently Accessed</SelectItem>
               <SelectItem value="deadline">Deadline</SelectItem>
               <SelectItem value="progress">Progress</SelectItem>
@@ -343,7 +243,7 @@ export function MyCoursesPage() {
             ) : (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {sortedCourses.map((course) => (
-                  <Card key={course.id} className="hover:shadow-lg transition-shadow">
+                  <Card key={course.id} className="hover:shadow-lg hover:-translate-y-1 transition-all duration-200 ease-apple bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                     <CardHeader>
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
@@ -393,24 +293,24 @@ export function MyCoursesPage() {
                         </div>
 
                         {course.status === 'in-progress' && course.nextLesson && (
-                          <div className="p-2 bg-blue-50 rounded-lg">
-                            <p className="text-xs text-blue-600 font-medium">Next lesson:</p>
-                            <p className="text-sm text-blue-900">{course.nextLesson}</p>
-                            <p className="text-xs text-blue-600 mt-1">~{course.estimatedCompletion} to complete</p>
+                          <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">Next lesson:</p>
+                            <p className="text-sm text-gray-900 dark:text-gray-100">{course.nextLesson}</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">~{course.estimatedCompletion} to complete</p>
                           </div>
                         )}
 
                         {course.status === 'completed' && (
-                          <div className="p-2 bg-green-50 rounded-lg">
+                          <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-xs text-green-600 font-medium">Completed on</p>
-                                <p className="text-sm text-green-900">{new Date(course.completedDate).toLocaleDateString()}</p>
+                                <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">Completed on</p>
+                                <p className="text-sm text-gray-900 dark:text-gray-100">{new Date(course.completedDate).toLocaleDateString()}</p>
                               </div>
                               {course.finalScore && (
                                 <div className="text-right">
-                                  <p className="text-xs text-green-600 font-medium">Final Score</p>
-                                  <p className="text-sm text-green-900 font-bold">{course.finalScore}%</p>
+                                  <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">Final Score</p>
+                                  <p className="text-sm text-gray-900 dark:text-gray-100 font-bold">{course.finalScore}%</p>
                                 </div>
                               )}
                             </div>

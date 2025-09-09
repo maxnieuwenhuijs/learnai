@@ -15,10 +15,8 @@ import {
   Play,
   Calendar,
   Target,
-  Zap,
   ChevronRight,
-  Star,
-  MessageSquare
+  Star
 } from 'lucide-react';
 
 export function ParticipantDashboard() {
@@ -33,15 +31,19 @@ export function ParticipantDashboard() {
 
   const loadDashboardData = async () => {
     try {
+      setLoading(true);
       const [coursesResponse, progressResponse] = await Promise.all([
         coursesApi.getAssignedCourses(),
         progressApi.getUserProgress()
       ]);
 
-      setCourses(coursesResponse.courses || []);
-      setUserProgress(progressResponse);
+      setCourses(coursesResponse || []);
+      setUserProgress(progressResponse || null);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
+      // Start completely empty
+      setCourses([]);
+      setUserProgress(null);
     } finally {
       setLoading(false);
     }
@@ -49,13 +51,13 @@ export function ParticipantDashboard() {
 
   const calculateOverallProgress = () => {
     if (!courses.length) return 0;
-    const totalProgress = courses.reduce((sum, course) => sum + course.progressPercentage, 0);
+    const totalProgress = courses.reduce((sum, course) => sum + (course.progress || 0), 0);
     return Math.round(totalProgress / courses.length);
   };
 
   const getTotalTimeSpent = () => {
-    if (!userProgress?.progress) return 0;
-    return userProgress.progress.reduce((sum, course) => sum + course.totalTimeSpent, 0);
+    if (!userProgress?.totalTimeSpent) return 0;
+    return userProgress.totalTimeSpent;
   };
 
   const formatTime = (seconds) => {
@@ -68,293 +70,238 @@ export function ParticipantDashboard() {
   };
 
   const getNextCourse = () => {
-    return courses.find(course => course.progressPercentage > 0 && course.progressPercentage < 100) 
-      || courses.find(course => course.progressPercentage === 0);
+    return courses.find(course => (course.progress || 0) > 0 && (course.progress || 0) < 100) 
+      || courses.find(course => (course.progress || 0) === 0);
   };
 
   const getCourseStatus = (progress) => {
-    if (progress === 0) return { label: 'Not Started', color: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300' };
-    if (progress < 50) return { label: 'In Progress', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' };
-    if (progress < 100) return { label: 'Almost Done', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400' };
-    return { label: 'Completed', color: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' };
+    if (progress === 0) return { label: 'Not Started', color: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' };
+    if (progress < 50) return { label: 'In Progress', color: 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200' };
+    if (progress < 100) return { label: 'Almost Done', color: 'bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-gray-100' };
+    return { label: 'Completed', color: 'bg-gray-400 dark:bg-gray-500 text-gray-900 dark:text-gray-100' };
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="space-y-4">
-          <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-8 w-48 rounded"></div>
-          <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-32 w-64 rounded"></div>
-        </div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100"></div>
       </div>
     );
   }
 
   const nextCourse = getNextCourse();
+  const overallProgress = calculateOverallProgress();
+  const totalTimeSpent = getTotalTimeSpent();
+  const completedCourses = courses.filter(c => (c.progress || 0) === 100).length;
+  const certificatesEarned = courses.filter(c => c.certificateEarned).length;
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Welcome Section with Continue Learning */}
-      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 text-white">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="w-full lg:w-auto">
-            <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2">Welcome back!</h2>
-            <p className="text-sm sm:text-base text-blue-100 mb-4 lg:mb-6">Continue your AI Act compliance training journey</p>
-            
-            {nextCourse && (
-              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 sm:p-4 w-full sm:inline-block sm:w-auto">
-                <p className="text-xs sm:text-sm text-blue-100 mb-2">Continue where you left off:</p>
-                <h3 className="font-semibold text-sm sm:text-base mb-2 sm:mb-3 line-clamp-1">{nextCourse.title}</h3>
+    <div className="space-y-6">
+      {/* Welcome Header */}
+      <div>
+        <h1 className="text-4xl font-semibold text-gray-900 dark:text-gray-100">Welcome back!</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">Continue your learning journey</p>
+      </div>
+
+      {/* Continue Learning Section */}
+      <Card className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardContent className="p-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                {nextCourse ? 'Continue Learning' : 'Ready to Start Learning?'}
+              </h2>
+              {nextCourse ? (
+                <div>
+                  <p className="text-gray-600 dark:text-gray-400 mb-2">{nextCourse.title}</p>
+                  <div className="flex items-center gap-4">
+                    <Progress value={nextCourse.progress || 0} className="flex-1 max-w-xs" />
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {nextCourse.progress || 0}%
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-600 dark:text-gray-400">You don't have any assigned courses yet. Check with your manager or admin.</p>
+              )}
+            </div>
+            <div>
+              {nextCourse ? (
                 <Button 
-                  className="bg-white text-indigo-600 hover:bg-gray-100 w-full sm:w-auto text-sm sm:text-base"
-                  size="sm"
+                  size="lg" 
                   onClick={() => navigate(`/course/${nextCourse.id}`)}
                 >
-                  Continue <ChevronRight className="w-4 h-4 ml-1" />
+                  <Play className="w-5 h-5 mr-2" />
+                  Continue Course
                 </Button>
-              </div>
-            )}
-          </div>
-          <div className="hidden lg:block flex-shrink-0">
-            <div className="w-24 h-24 lg:w-32 lg:h-32 bg-white/10 rounded-full flex items-center justify-center">
-              <Trophy className="w-12 h-12 lg:w-16 lg:h-16 text-yellow-300" />
+              ) : (
+                <Button 
+                  size="lg"
+                  variant="outline" 
+                  onClick={() => navigate('/courses')}
+                >
+                  <BookOpen className="w-5 h-5 mr-2" />
+                  View All Courses
+                </Button>
+              )}
             </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow bg-white dark:bg-gray-800">
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-indigo-600" />
-              </div>
-              <Badge variant="secondary" className="bg-indigo-50 text-indigo-600">
-                +5% this week
-              </Badge>
+      {/* Progress Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <BookOpen className="w-6 h-6 text-gray-600 dark:text-gray-400" />
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Overall Progress</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{calculateOverallProgress()}%</p>
-              <Progress value={calculateOverallProgress()} className="mt-3 h-2" />
-            </div>
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{courses.length}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Assigned Courses</p>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow bg-white dark:bg-gray-800">
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-purple-600" />
-              </div>
-              <Zap className="w-4 h-4 text-yellow-500" />
+        <Card>
+          <CardContent className="p-6 text-center">
+            <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <Trophy className="w-6 h-6 text-gray-600 dark:text-gray-400" />
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Courses</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{courses.length}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                {courses.filter(c => c.progressPercentage === 100).length} completed
-              </p>
-            </div>
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{completedCourses}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Completed</p>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow bg-white dark:bg-gray-800">
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <Clock className="w-6 h-6 text-green-600" />
-              </div>
-              <Badge variant="secondary" className="bg-green-50 text-green-600">
-                Active
-              </Badge>
+        <Card>
+          <CardContent className="p-6 text-center">
+            <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <Award className="w-6 h-6 text-gray-600 dark:text-gray-400" />
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Time Invested</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{formatTime(getTotalTimeSpent())}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Total learning time</p>
-            </div>
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{certificatesEarned}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Certificates</p>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow bg-white dark:bg-gray-800">
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <Award className="w-6 h-6 text-yellow-600" />
-              </div>
-              <Star className="w-4 h-4 text-yellow-500" />
+        <Card>
+          <CardContent className="p-6 text-center">
+            <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <Clock className="w-6 h-6 text-gray-600 dark:text-gray-400" />
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Certificates</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
-                {userProgress?.certificates?.length || 0}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Achievements earned</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow bg-white dark:bg-gray-800 cursor-pointer" onClick={() => navigate('/prompts')}>
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <MessageSquare className="w-6 h-6 text-purple-600" />
-              </div>
-              <ChevronRight className="w-4 h-4 text-purple-500" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Prompt Library</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">7</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Ready to use templates</p>
-            </div>
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{formatTime(totalTimeSpent)}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Time Spent</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Courses Section with Modern Cards */}
-      <div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
-          <div>
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">My Courses</h3>
-            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">Continue your learning journey</p>
-          </div>
-          <Button variant="outline" size="sm" className="w-full sm:w-auto">
-            Browse Catalog <ChevronRight className="w-4 h-4 ml-1" />
-          </Button>
-        </div>
-
-        {courses.length === 0 ? (
-          <Card className="border-0 shadow-sm bg-white dark:bg-gray-800">
-            <CardContent className="text-center py-12">
-              <div className="w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                <BookOpen className="h-10 w-10 text-gray-400 dark:text-gray-500" />
-              </div>
-              <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No courses yet</h4>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">Start your learning journey today</p>
-              <Button>Browse Available Courses</Button>
+      {/* Recent Courses */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">Your Courses</CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/courses')}>
+                View All <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {courses.length === 0 ? (
+                <div className="text-center py-8">
+                  <BookOpen className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                  <p className="text-gray-500 dark:text-gray-400">No courses assigned yet</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500">Contact your manager to get started</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {courses.slice(0, 3).map((course) => {
+                    const status = getCourseStatus(course.progress || 0);
+                    return (
+                      <div key={course.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-gray-900 dark:text-gray-100">{course.title}</h4>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge className={status.color}>{status.label}</Badge>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">•</span>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">{course.duration}</span>
+                          </div>
+                        </div>
+                        <div className="w-32 ml-4">
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="text-gray-600 dark:text-gray-400">Progress</span>
+                            <span className="font-medium text-gray-900 dark:text-gray-100">{course.progress || 0}%</span>
+                          </div>
+                          <Progress value={course.progress || 0} className="h-2" />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {courses.map((course) => {
-              const status = getCourseStatus(course.progressPercentage);
-              return (
-                <Card 
-                  key={course.id} 
-                  className="border-0 shadow-sm hover:shadow-lg transition-all duration-200 cursor-pointer group bg-white dark:bg-gray-800"
-                  onClick={() => navigate(`/course/${course.id}`)}
-                >
-                  {/* Course Image Placeholder */}
-                  <div className="h-40 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-t-lg relative overflow-hidden">
-                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors"></div>
-                    <div className="absolute bottom-4 left-4 right-4">
-                      <Badge className={status.color}>
-                        {status.label}
-                      </Badge>
-                    </div>
-                    {course.progressPercentage === 100 && (
-                      <div className="absolute top-4 right-4">
-                        <div className="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center">
-                          <Trophy className="w-6 h-6 text-white" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
+        </div>
 
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg line-clamp-1">{course.title}</CardTitle>
-                    <CardDescription className="line-clamp-2">{course.description}</CardDescription>
-                  </CardHeader>
+        {/* Personal Stats */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">Your Progress</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">{overallProgress}%</span>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Overall Progress</p>
+              </div>
 
-                  <CardContent>
-                    <div className="space-y-4">
-                      {/* Progress Bar */}
-                      <div>
-                        <div className="flex justify-between text-sm mb-2">
-                          <span className="text-gray-600 dark:text-gray-400">Progress</span>
-                          <span className="font-semibold text-gray-900 dark:text-gray-100">
-                            {course.progressPercentage}%
-                          </span>
-                        </div>
-                        <Progress value={course.progressPercentage} className="h-2" />
-                      </div>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Completed Courses</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{completedCourses}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Certificates Earned</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{certificatesEarned}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Time Learning</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{formatTime(totalTimeSpent)}</span>
+                </div>
+              </div>
 
-                      {/* Course Stats */}
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                          <BookOpen className="w-4 h-4" />
-                          <span>{course.completedLessons}/{course.totalLessons} lessons</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                          <Clock className="w-4 h-4" />
-                          <span>~{course.estimatedTime || '2h'}</span>
-                        </div>
-                      </div>
-
-                      {/* Action Button */}
-                      <Button 
-                        className="w-full group-hover:bg-indigo-700"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/course/${course.id}`);
-                        }}
-                      >
-                        <Play className="w-4 h-4 mr-2" />
-                        {course.progressPercentage === 0 ? 'Start Course' : 
-                         course.progressPercentage === 100 ? 'Review Course' : 'Continue Learning'}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
+              <Button variant="outline" className="w-full" onClick={() => navigate('/certificates')}>
+                <Award className="w-4 h-4 mr-2" />
+                View Certificates
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Certificates Section */}
-      {userProgress?.certificates && userProgress.certificates.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-6">
+      {/* Quick Actions */}
+      <Card className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardContent className="p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">My Certificates</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Your achievements and certifications</p>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Quick Actions</h3>
+              <p className="text-gray-600 dark:text-gray-400">Access your learning tools and resources</p>
             </div>
-            <Button variant="outline" size="sm">
-              View All <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button variant="default" onClick={() => navigate('/courses')}>
+                <BookOpen className="w-4 h-4 mr-2" />
+                My Courses
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/calendar')}>
+                <Calendar className="w-4 h-4 mr-2" />
+                Schedule
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/certificates')}>
+                <Award className="w-4 h-4 mr-2" />
+                Certificates
+              </Button>
+            </div>
           </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            {userProgress.certificates.map((cert) => (
-              <Card key={cert.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Award className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 dark:text-gray-100">{cert.courseTitle}</h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        Issued on {new Date(cert.issuedAt).toLocaleDateString()}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                        Certificate ID: {cert.certificateUid}
-                      </p>
-                    </div>
-                    <Button variant="ghost" size="sm">
-                      View
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

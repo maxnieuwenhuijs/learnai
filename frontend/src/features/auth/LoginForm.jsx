@@ -139,34 +139,21 @@ export function LoginForm() {
           </div>
         </div>
 
-        {/* Quick Login Options for Testing */}
-        <div className="mt-6 space-y-2">
-          <p className="text-sm text-muted-foreground text-center">Quick Login (for testing):</p>
-          <div className="grid grid-cols-3 gap-2">
+        {/* Super Admin Quick Login */}
+        <div className="mt-6">
+          <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
             <Button
               type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => quickLogin('participant@test.com', 'password123')}
+              variant="default"
+              size="lg"
+              onClick={() => quickLogin('superadmin@howtoworkwith.ai', 'SuperAdmin123!')}
+              className="w-full"
             >
-              Participant
+              🎛️ Super Admin Access
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => quickLogin('manager@test.com', 'password123')}
-            >
-              Manager
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => quickLogin('admin@test.com', 'password123')}
-            >
-              Admin
-            </Button>
+            <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
+              Platform administration and company management
+            </p>
           </div>
         </div>
       </CardContent>

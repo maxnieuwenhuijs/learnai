@@ -91,82 +91,9 @@ export function CalendarPage() {
       setUpcomingDeadlines(upcomingDeadlines);
     } catch (error) {
       console.error('Error loading calendar data:', error);
-      // If API fails, use fallback empty data
+      // Start completely empty
       setEvents([]);
       setUpcomingDeadlines([]);
-      
-      // Optionally, you can still show mock data for demo purposes
-      const mockEvents = [
-        {
-          id: 1,
-          title: 'AI Act Fundamentals - Module 2 Due',
-          type: 'deadline',
-          date: '2024-08-30T09:00:00Z',
-          courseTitle: 'AI Act Fundamentals',
-          description: 'Complete Module 2: Risk Assessment Framework',
-          priority: 'high'
-        },
-        {
-          id: 2,
-          title: 'Team Training Session',
-          type: 'meeting',
-          date: '2024-09-02T14:00:00Z',
-          courseTitle: 'Risk Management in AI Systems',
-          description: 'Weekly team sync and progress review',
-          priority: 'medium'
-        },
-        {
-          id: 3,
-          title: 'Certificate Exam',
-          type: 'exam',
-          date: '2024-09-05T10:00:00Z',
-          courseTitle: 'AI Act Fundamentals',
-          description: 'Final assessment for certificate',
-          priority: 'high'
-        },
-        {
-          id: 4,
-          title: 'New Course Release',
-          type: 'announcement',
-          date: '2024-09-08T00:00:00Z',
-          courseTitle: 'Advanced AI Governance',
-          description: 'New course available for enrollment',
-          priority: 'low'
-        }
-      ];
-
-      const mockDeadlines = [
-        {
-          id: 1,
-          title: 'Complete AI Act Module 2',
-          courseTitle: 'AI Act Fundamentals',
-          dueDate: '2024-08-30T23:59:59Z',
-          daysLeft: 2,
-          type: 'module',
-          status: 'pending'
-        },
-        {
-          id: 2,
-          title: 'Risk Assessment Quiz',
-          courseTitle: 'Risk Management in AI Systems',
-          dueDate: '2024-09-03T23:59:59Z',
-          daysLeft: 6,
-          type: 'quiz',
-          status: 'pending'
-        },
-        {
-          id: 3,
-          title: 'Final Certificate Exam',
-          courseTitle: 'AI Act Fundamentals',
-          dueDate: '2024-09-05T23:59:59Z',
-          daysLeft: 8,
-          type: 'exam',
-          status: 'pending'
-        }
-      ];
-
-      setEvents(mockEvents);
-      setUpcomingDeadlines(mockDeadlines);
     } finally {
       setLoading(false);
     }

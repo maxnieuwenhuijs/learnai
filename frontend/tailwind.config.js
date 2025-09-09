@@ -51,18 +51,39 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        xl: "0.75rem",
+        '2xl': "1rem",
       },
       animation: {
+        'pop-in': 'popIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1)',
         'fade-in': 'fadeIn 0.3s ease-in-out',
-        'bounce': 'bounce 1s infinite',
-        'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'slide-in': 'slideIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
+        'scale-in': 'scaleIn 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
       },
       keyframes: {
+        popIn: {
+          '0%': { opacity: '0', transform: 'scale(0.8) translateY(10px)' },
+          '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
+        },
         fadeIn: {
           '0%': { opacity: '0', transform: 'translateY(-10px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        slideIn: {
+          '0%': { opacity: '0', transform: 'translateX(-20px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        scaleIn: {
+          '0%': { opacity: '0', transform: 'scale(0.9)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
         }
       },
+      transitionTimingFunction: {
+        'apple': 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+      },
+      scale: {
+        '98': '0.98',
+      }
     },
   },
   plugins: [],

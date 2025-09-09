@@ -14,6 +14,9 @@
     "pm2:status": "pm2 status",
     "db:sync": "node -e \"require('./src/config/database').sequelize.sync({force: false})\"",
     "db:seed": "node seed-comprehensive-data.js",
+    "db:reset": "node src/scripts/reset-and-seed.js",
+    "create-super-admin": "node src/scripts/create-super-admin.js",
+    "clear-data": "node src/scripts/clear-all-data.js",
     "postinstall": "echo 'Installation completed. Please configure your .env file and run: npm run pm2:start'"
   },
   "keywords": ["elearning", "api", "nodejs", "express", "mysql"],
