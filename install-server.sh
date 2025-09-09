@@ -32,8 +32,13 @@ print_error() {
 
 # Check if running as root
 if [[ $EUID -eq 0 ]]; then
-   print_error "This script should not be run as root for security reasons"
-   exit 1
+   print_warning "Running as root - this is not recommended for security reasons"
+   print_warning "Consider creating a dedicated user for the application"
+   read -p "Do you want to continue anyway? (y/N): " -n 1 -r
+   echo
+   if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+       exit 1
+   fi
 fi
 
 print_status "Starting HowToWorkWith.AI Server Installation..."
