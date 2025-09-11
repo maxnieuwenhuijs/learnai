@@ -561,35 +561,60 @@ const resetDatabase = async (req, res) => {
 // Create seed data for demo purposes
 const createSeedData = async (req, res) => {
     try {
-        // Create seed companies
-        const seedCompanies = [
-            {
-                name: 'Demo Company 1',
-                industry: 'Software Development',
-                country: 'Netherlands',
-                size: '50-100',
-                description: 'Demo company for testing purposes',
-                status: 'active'
-            }
-        ];
+        // Create platform admin company first
+        const platformCompany = await Company.create({
+            name: 'Platform Administration',
+            industry: 'Technology',
+            country: 'Global',
+            size: '1-10',
+            description: 'System administration company',
+            status: 'active',
+            subscription_type: 'enterprise'
+        });
 
-        const companies = await Company.bulkCreate(seedCompanies);
+        // Create admin department
+        const adminDepartment = await Department.create({
+            name: 'Administration',
+            company_id: platformCompany.id
+        });
 
-        // Create departments for each company
-        const departments = [];
-        for (const company of companies) {
-            departments.push(
-                { name: 'Engineering', company_id: company.id },
-                { name: 'HR', company_id: company.id },
-                { name: 'Legal', company_id: company.id }
-            );
-        }
-        await Department.bulkCreate(departments);
+        // Create super admin user
+        const superAdmin = await User.create({
+            company_id: platformCompany.id,
+            department_id: adminDepartment.id,
+            email: 'admin@example.com',
+            name: 'Super Admin',
+            password_hash: 'admin123', // Will be hashed by model hook
+            role: 'super_admin'
+        });
+
+        // Create seed demo company
+        const demoCompany = await Company.create({
+            name: 'Demo Company 1',
+            industry: 'Software Development',
+            country: 'Netherlands',
+            size: '50-100',
+            description: 'Demo company for testing purposes',
+            status: 'active',
+            subscription_type: 'premium'
+        });
+
+        // Create departments for demo company
+        const departments = await Department.bulkCreate([
+            { name: 'Engineering', company_id: demoCompany.id },
+            { name: 'HR', company_id: demoCompany.id },
+            { name: 'Legal', company_id: demoCompany.id }
+        ]);
 
         res.json({
             success: true,
             message: 'Seed data created successfully',
-            companies: companies
+            superAdmin: {
+                email: superAdmin.email,
+                password: 'admin123',
+                role: superAdmin.role
+            },
+            companies: [platformCompany, demoCompany]
         });
     } catch (error) {
         console.error('Error creating seed data:', error);

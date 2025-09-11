@@ -10,10 +10,18 @@ const User = sequelize.define('User', {
     },
     company_id: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true, // Allow NULL for super_admin role
         references: {
             model: 'companies',
             key: 'id'
+        },
+        validate: {
+            // Custom validation: require company_id for non-super_admin users
+            isRequiredForNonSuperAdmin(value) {
+                if (this.role !== 'super_admin' && !value) {
+                    throw new Error('Company assignment is required for non-super admin users');
+                }
+            }
         }
     },
     department_id: {
