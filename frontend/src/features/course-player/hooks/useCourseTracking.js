@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { progressApi } from '@/api/progress';
 
-export function useCourseTracking(lessonId) {
+export function useCourseTracking(lessonId, isPreviewMode = false) {
   const intervalRef = useRef(null);
   const timeSpentRef = useRef(0);
 
@@ -13,6 +13,11 @@ export function useCourseTracking(lessonId) {
 
     // Reset time spent
     timeSpentRef.current = 0;
+
+    // Skip progress tracking in preview mode
+    if (isPreviewMode) {
+      return;
+    }
 
     // Start heartbeat for time tracking if lesson is active
     if (lessonId) {
@@ -32,11 +37,11 @@ export function useCourseTracking(lessonId) {
         clearInterval(intervalRef.current);
       }
     };
-  }, [lessonId]);
+  }, [lessonId, isPreviewMode]);
 
   const startLesson = async () => {
-    if (!lessonId) return;
-    
+    if (!lessonId || isPreviewMode) return;
+
     try {
       await progressApi.startLesson(lessonId);
     } catch (error) {
@@ -45,8 +50,8 @@ export function useCourseTracking(lessonId) {
   };
 
   const completeLesson = async (quizScore = null) => {
-    if (!lessonId) return;
-    
+    if (!lessonId || isPreviewMode) return true; // Return true in preview mode
+
     try {
       // Clear interval before completing
       if (intervalRef.current) {
@@ -62,8 +67,8 @@ export function useCourseTracking(lessonId) {
   };
 
   const updateTimeSpent = async (seconds) => {
-    if (!lessonId) return;
-    
+    if (!lessonId || isPreviewMode) return;
+
     try {
       await progressApi.updateTimeSpent(lessonId, seconds);
       timeSpentRef.current += seconds;

@@ -16,6 +16,20 @@ const authMiddleware = async (req, res, next) => {
         
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
+        // Handle standalone super admin
+        if (decoded.standalone && decoded.role === 'super_admin') {
+            req.user = {
+                id: 'super_admin',
+                role: 'super_admin',
+                email: process.env.SUPER_ADMIN_EMAIL,
+                name: 'Super Administrator',
+                company_id: null,
+                department_id: null,
+                standalone: true
+            };
+            return next();
+        }
+        
         const user = await User.findByPk(decoded.userId, {
             attributes: { exclude: ['password_hash'] }
         });

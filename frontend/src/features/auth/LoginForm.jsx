@@ -146,13 +146,13 @@ export function LoginForm() {
               type="button"
               variant="default"
               size="lg"
-              onClick={() => quickLogin('superadmin@howtoworkwith.ai', 'SuperAdmin123!')}
+              onClick={() => quickLogin('superadmin@platform.com', 'SuperSecure123!')}
               className="w-full"
             >
-              🎛️ Super Admin Access
+              🎛️ Super Admin Access (Standalone)
             </Button>
             <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
-              Platform administration and company management
+              Standalone admin access - No database dependency required
             </p>
           </div>
         </div>

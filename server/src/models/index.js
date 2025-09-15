@@ -17,12 +17,15 @@ const Prompt = require('./Prompt');
 const PromptVersion = require('./PromptVersion');
 const PromptApproval = require('./PromptApproval');
 const PromptUsage = require('./PromptUsage');
+const AuditLog = require('./AuditLog');
+const SystemMetrics = require('./SystemMetrics');
 
 // Define associations
 
 // Company associations
 Company.hasMany(Department, { foreignKey: 'company_id', as: 'departments' });
 Company.hasMany(User, { foreignKey: 'company_id', as: 'users' });
+Company.hasMany(Course, { foreignKey: 'company_id', as: 'courses' });
 Company.hasMany(CourseAssignment, { foreignKey: 'company_id', as: 'courseAssignments' });
 
 // Department associations
@@ -35,23 +38,26 @@ User.belongsTo(Company, { foreignKey: 'company_id', as: 'company' });
 User.belongsTo(Department, { foreignKey: 'department_id', as: 'department' });
 User.hasMany(UserProgress, { foreignKey: 'user_id', as: 'progress' });
 User.hasMany(Certificate, { foreignKey: 'user_id', as: 'certificates' });
+User.hasMany(Course, { foreignKey: 'created_by', as: 'createdCourses' });
 
 // Course associations
-Course.belongsToMany(Module, { 
-    through: CourseModule, 
+Course.belongsTo(Company, { foreignKey: 'company_id', as: 'company' });
+Course.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+Course.belongsToMany(Module, {
+    through: CourseModule,
     foreignKey: 'course_id',
     otherKey: 'module_id',
-    as: 'modules' 
+    as: 'modules'
 });
 Course.hasMany(CourseAssignment, { foreignKey: 'course_id', as: 'assignments' });
 Course.hasMany(Certificate, { foreignKey: 'course_id', as: 'certificates' });
 
 // Module associations
-Module.belongsToMany(Course, { 
-    through: CourseModule, 
+Module.belongsToMany(Course, {
+    through: CourseModule,
     foreignKey: 'module_id',
     otherKey: 'course_id',
-    as: 'courses' 
+    as: 'courses'
 });
 Module.hasMany(Lesson, { foreignKey: 'module_id', as: 'lessons' });
 
@@ -140,6 +146,12 @@ PromptUsage.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 Prompt.hasMany(PromptUsage, { foreignKey: 'prompt_id', as: 'usage' });
 User.hasMany(PromptUsage, { foreignKey: 'user_id', as: 'promptUsage' });
 
+// AuditLog associations
+AuditLog.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+AuditLog.belongsTo(Company, { foreignKey: 'company_id', as: 'company' });
+User.hasMany(AuditLog, { foreignKey: 'user_id', as: 'auditLogs' });
+Company.hasMany(AuditLog, { foreignKey: 'company_id', as: 'auditLogs' });
+
 module.exports = {
     Company,
     Department,
@@ -159,5 +171,7 @@ module.exports = {
     Prompt,
     PromptVersion,
     PromptApproval,
-    PromptUsage
+    PromptUsage,
+    AuditLog,
+    SystemMetrics
 };

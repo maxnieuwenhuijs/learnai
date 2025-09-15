@@ -26,10 +26,44 @@ const login = async (req, res) => {
 
         const { email, password } = req.body;
 
+        // Check for standalone super admin login first
+        if (email === process.env.SUPER_ADMIN_EMAIL && password === process.env.SUPER_ADMIN_PASSWORD) {
+            const superAdminToken = jwt.sign(
+                {
+                    userId: 'super_admin',
+                    companyId: null,
+                    role: 'super_admin',
+                    standalone: true
+                },
+                process.env.JWT_SECRET,
+                { expiresIn: process.env.JWT_EXPIRE || '7d' }
+            );
+
+            return res.json({
+                success: true,
+                token: superAdminToken,
+                user: {
+                    id: 'super_admin',
+                    email: process.env.SUPER_ADMIN_EMAIL,
+                    name: 'Super Administrator',
+                    role: 'super_admin',
+                    company_id: null,
+                    company: null,
+                    department_id: null,
+                    department: null,
+                    standalone: true
+                }
+            });
+        }
+
         const user = await User.findOne({
             where: { email },
             include: [
-                { model: Company, as: 'company' },
+                {
+                    model: Company,
+                    as: 'company',
+                    attributes: { exclude: ['logo_url', 'logo_filename'] }
+                },
                 { model: Department, as: 'department' }
             ]
         });
@@ -116,9 +150,31 @@ const register = async (req, res) => {
 
 const getMe = async (req, res) => {
     try {
+        // Handle standalone super admin
+        if (req.user.standalone && req.user.role === 'super_admin') {
+            return res.json({
+                success: true,
+                user: {
+                    id: 'super_admin',
+                    email: process.env.SUPER_ADMIN_EMAIL,
+                    name: 'Super Administrator',
+                    role: 'super_admin',
+                    company_id: null,
+                    company: null,
+                    department_id: null,
+                    department: null,
+                    standalone: true
+                }
+            });
+        }
+
         const user = await User.findByPk(req.user.id, {
             include: [
-                { model: Company, as: 'company' },
+                {
+                    model: Company,
+                    as: 'company',
+                    attributes: { exclude: ['logo_url', 'logo_filename'] }
+                },
                 { model: Department, as: 'department' }
             ],
             attributes: { exclude: ['password_hash'] }

@@ -36,6 +36,7 @@ import {
   Edit,
   Trash2,
   Eye,
+  EyeOff,
   Settings,
   Mail,
   Phone,
@@ -43,7 +44,10 @@ import {
   Calendar,
   Award,
   TrendingUp,
-  Clock
+  Clock,
+  Copy,
+  Check,
+  RefreshCw
 } from 'lucide-react';
 import api from '@/api/config';
 
@@ -55,25 +59,126 @@ function CompanyDetailPage() {
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [showUserDialog, setShowUserDialog] = useState(false);
   const [showDepartmentDialog, setShowDepartmentDialog] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [departmentError, setDepartmentError] = useState(false);
   const [userFormData, setUserFormData] = useState({
     name: '',
     email: '',
     password: 'TempPassword123!',
+    password_confirm: 'TempPassword123!',
     role: 'participant',
     department_id: ''
   });
   const [departmentFormData, setDepartmentFormData] = useState({
+    name: ''
+  });
+  const [showEditCompanyDialog, setShowEditCompanyDialog] = useState(false);
+  const [editCompanyData, setEditCompanyData] = useState({
     name: '',
+    slug: '',
+    industry: '',
+    country: '',
+    size: '',
     description: ''
   });
+  const [showUserPassword, setShowUserPassword] = useState(false);
+  const [copiedUserPassword, setCopiedUserPassword] = useState(false);
 
   useEffect(() => {
     loadCompanyDetails();
   }, [companyId]);
+
+  // Get activity icon based on type
+  const getActivityIcon = (type) => {
+    switch (type) {
+      case 'user_created': return <UserPlus className="h-4 w-4 text-green-500" />;
+      case 'user_updated': return <Edit className="h-4 w-4 text-blue-500" />;
+      case 'course_completed': return <BookOpen className="h-4 w-4 text-blue-500" />;
+      case 'certificate_issued': return <Award className="h-4 w-4 text-yellow-500" />;
+      case 'user_login': return <Users className="h-4 w-4 text-gray-500" />;
+      case 'department_created': return <Building className="h-4 w-4 text-purple-500" />;
+      case 'company_created': return <Building className="h-4 w-4 text-green-500" />;
+      case 'company_updated': return <Settings className="h-4 w-4 text-blue-500" />;
+      case 'prompt_created': return <Plus className="h-4 w-4 text-green-500" />;
+      case 'prompt_deleted': return <Trash2 className="h-4 w-4 text-red-500" />;
+      default: return <Clock className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
+  // Format activity timestamp
+  const formatActivityTime = (timestamp) => {
+    const now = new Date();
+    const activityTime = new Date(timestamp);
+    const diffInHours = Math.floor((now - activityTime) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return 'Less than an hour ago';
+    if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+    
+    return activityTime.toLocaleDateString();
+  };
+
+  // User password generator (same as company admin)
+  const generateUserPassword = () => {
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const numbers = '0123456789';
+    const symbols = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+    const allChars = lowercase + uppercase + numbers + symbols;
+    
+    let password = '';
+    password += lowercase[Math.floor(Math.random() * lowercase.length)];
+    password += uppercase[Math.floor(Math.random() * uppercase.length)];
+    password += numbers[Math.floor(Math.random() * numbers.length)];
+    password += symbols[Math.floor(Math.random() * symbols.length)];
+    
+    for (let i = 4; i < 12; i++) {
+      password += allChars[Math.floor(Math.random() * allChars.length)];
+    }
+    
+    return password.split('').sort(() => 0.5 - Math.random()).join('');
+  };
+
+  // Handle auto-generate password for user
+  const handleGenerateUserPassword = () => {
+    const newPassword = generateUserPassword();
+    setUserFormData({
+      ...userFormData,
+      password: newPassword,
+      password_confirm: newPassword
+    });
+    setShowUserPassword(true);
+    toast({
+      title: "Password Generated",
+      description: "A secure password has been generated. Make sure to copy it!",
+    });
+  };
+
+  // Copy user password to clipboard
+  const handleCopyUserPassword = async () => {
+    try {
+      await navigator.clipboard.writeText(userFormData.password);
+      setCopiedUserPassword(true);
+      toast({
+        title: "Password Copied",
+        description: "Password has been copied to clipboard",
+      });
+      setTimeout(() => setCopiedUserPassword(false), 2000);
+    } catch (err) {
+      toast({
+        title: "Copy Failed",
+        description: "Could not copy password to clipboard",
+        variant: "destructive",
+      });
+    }
+  };
 
   const loadCompanyDetails = async () => {
     try {
@@ -87,12 +192,14 @@ function CompanyDetailPage() {
         setUsers(response.data.company.users || []);
         setDepartments(response.data.company.departments || []);
         setCourses(response.data.company.courses || []);
+        setRecentActivity(response.data.company.recent_activity || []);
       } else {
         // Start completely empty
         setCompany(null);
         setUsers([]);
         setDepartments([]);
         setCourses([]);
+        setRecentActivity([]);
       }
     } catch (error) {
       console.error('Error loading company details:', error);
@@ -101,46 +208,191 @@ function CompanyDetailPage() {
     }
   };
 
-  const handleCreateUser = async () => {
+  // Open edit company dialog
+  const openEditCompanyDialog = () => {
+    setEditCompanyData({
+      name: company?.name || '',
+      slug: company?.slug || '',
+      industry: company?.industry || '',
+      country: company?.country || '',
+      size: company?.size || '',
+      description: company?.description || ''
+    });
+    setShowEditCompanyDialog(true);
+  };
+
+  // Handle edit company
+  const handleEditCompany = async () => {
     try {
-      const response = await api.post(`/api/super-admin/companies/${companyId}/users`, userFormData);
+      const formData = new FormData();
+      
+      // Add all form fields
+      Object.keys(editCompanyData).forEach(key => {
+        if (key !== 'logo' && editCompanyData[key]) {
+          formData.append(key, editCompanyData[key]);
+        }
+      });
+      
+      // Add logo file if provided
+      if (editCompanyData.logo) {
+        formData.append('logo', editCompanyData.logo);
+      }
+      
+      const response = await api.put(`/super-admin/companies/${companyId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      if (response.data?.success) {
+        toast({
+          title: "Company Updated",
+          description: "Company information has been updated successfully.",
+        });
+        setShowEditCompanyDialog(false);
+        loadCompanyDetails(); // Reload data
+      }
+    } catch (error) {
+      toast({
+        title: "Update Failed", 
+        description: error.response?.data?.message || "Failed to update company",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Delete department
+  const handleDeleteDepartment = async (departmentId) => {
+    if (!window.confirm('Are you sure you want to delete this department? Users in this department will need to be reassigned.')) {
+      return;
+    }
+
+    try {
+      await api.delete(`/super-admin/companies/${companyId}/departments/${departmentId}`);
+      setDepartments(departments.filter(d => d.id !== departmentId));
+      toast({
+        title: "Department Deleted",
+        description: "Department has been removed successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete department",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCreateUser = async () => {
+    const isEditing = !!editingUser;
+    
+    try {
+      // Validate passwords match
+      if (userFormData.password !== userFormData.password_confirm) {
+        toast({
+          title: "Password Mismatch",
+          description: "Password and confirmation password do not match",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validate password strength
+      if (userFormData.password.length < 8) {
+        toast({
+          title: "Weak Password",
+          description: "Password must be at least 8 characters long",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validate department selection
+      if (!userFormData.department_id) {
+        setDepartmentError(true);
+        toast({
+          title: "Department Required",
+          description: "Please select a department for the user",
+          variant: "destructive",
+        });
+        return;
+      }
+      setDepartmentError(false);
+
+      const endpoint = isEditing 
+        ? `/super-admin/users/${editingUser.id}` 
+        : `/super-admin/companies/${companyId}/users`;
+      const method = isEditing ? 'put' : 'post';
+      
+      // For updates, don't send password fields
+      const dataToSend = isEditing 
+        ? { name: userFormData.name, email: userFormData.email, role: userFormData.role, department_id: userFormData.department_id || null }
+        : userFormData;
+      
+      const response = await api[method](endpoint, dataToSend);
       
       if (response.data?.success) {
         toast({
           title: 'Success',
-          description: 'User created successfully'
+          description: isEditing ? 'User updated successfully' : 'User created successfully'
         });
         setShowUserDialog(false);
         resetUserForm();
+        setEditingUser(null);
         loadCompanyDetails();
       }
     } catch (error) {
-      // Demo simulation
+      console.error('Error with user operation:', error);
+      console.error('Error response:', error.response);
+      const errorMessage = error.response?.data?.message || `Failed to ${isEditing ? 'update' : 'create'} user`;
+      console.error('Error message to display:', errorMessage);
+      
       toast({
-        title: 'User Created',
-        description: `${userFormData.name} has been added to the company`
+        title: isEditing ? "User Update Failed" : "User Creation Failed",
+        description: errorMessage,
+        variant: "destructive",
       });
-      
-      const newUser = {
-        id: Date.now(),
-        name: userFormData.name,
-        email: userFormData.email,
-        role: userFormData.role,
-        department: departments.find(d => d.id == userFormData.department_id),
-        created_at: new Date().toISOString(),
-        last_active: new Date().toISOString(),
-        status: 'active'
-      };
-      
-      setUsers(prev => [...prev, newUser]);
-      setShowUserDialog(false);
-      resetUserForm();
+    }
+  };
+
+  const handleEditUser = (user) => {
+    setUserFormData({
+      name: user.name,
+      email: user.email,
+      password: 'TempPassword123!', // Reset to default
+      password_confirm: 'TempPassword123!',
+      role: user.role,
+      department_id: user.department?.id?.toString() || ''
+    });
+    setEditingUser(user);
+    setShowUserDialog(true);
+  };
+
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm('Are you sure you want to delete this user?')) {
+      return;
+    }
+
+    try {
+      await api.delete(`/super-admin/users/${userId}`);
+      toast({
+        title: "User Deleted",
+        description: "User has been removed successfully.",
+      });
+      loadCompanyDetails(); // Reload to get updated user list
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: "Delete Failed",
+        description: error.response?.data?.message || "Failed to delete user",
+        variant: "destructive",
+      });
     }
   };
 
   const handleCreateDepartment = async () => {
     try {
-      const response = await api.post(`/api/super-admin/companies/${companyId}/departments`, departmentFormData);
+      const response = await api.post(`/super-admin/companies/${companyId}/departments`, departmentFormData);
       
       if (response.data?.success) {
         toast({
@@ -152,21 +404,12 @@ function CompanyDetailPage() {
         loadCompanyDetails();
       }
     } catch (error) {
-      // Demo simulation
+      console.error('Error creating department:', error);
       toast({
-        title: 'Department Created',
-        description: `${departmentFormData.name} department has been created`
+        title: "Department Creation Failed",
+        description: error.response?.data?.message || "Failed to create department",
+        variant: "destructive",
       });
-      
-      const newDepartment = {
-        id: Date.now(),
-        name: departmentFormData.name,
-        user_count: 0
-      };
-      
-      setDepartments(prev => [...prev, newDepartment]);
-      setShowDepartmentDialog(false);
-      resetDepartmentForm();
     }
   };
 
@@ -175,15 +418,19 @@ function CompanyDetailPage() {
       name: '',
       email: '',
       password: 'TempPassword123!',
+      password_confirm: 'TempPassword123!',
       role: 'participant',
       department_id: ''
     });
+    setShowUserPassword(false);
+    setCopiedUserPassword(false);
+    setEditingUser(null);
+    setDepartmentError(false);
   };
 
   const resetDepartmentForm = () => {
     setDepartmentFormData({
-      name: '',
-      description: ''
+      name: ''
     });
   };
 
@@ -229,18 +476,42 @@ function CompanyDetailPage() {
         </Button>
         
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-semibold text-gray-900 dark:text-gray-100 mb-2">{company?.name}</h1>
-            <div className="flex items-center gap-4 text-gray-600 dark:text-gray-400">
-              <span>{company?.industry}</span>
-              <span>•</span>
-              <span>{company?.country}</span>
-              <span>•</span>
-              <span>{company?.size} employees</span>
-              <Badge className={getStatusColor(company?.status)}>
-                {company?.status}
-              </Badge>
+          <div className="flex items-center gap-6">
+            <div className="flex-shrink-0">
+              {company?.logo_url ? (
+                <img
+                  src={company.logo_url.startsWith('http') ? company.logo_url : `http://localhost:5000${company.logo_url}`}
+                  alt={`${company.name} logo`}
+                  className="h-16 w-16 object-contain rounded border bg-white"
+                  onError={(e) => {
+                    e.target.style.display = "none";
+                    e.target.nextSibling.style.display = "flex";
+                  }}
+                />
+              ) : null}
+              <div className={`h-16 w-16 rounded border bg-gray-100 dark:bg-gray-800 flex items-center justify-center ${company?.logo_url ? "hidden" : "flex"}`}>
+                <Building className="h-8 w-8 text-gray-400" />
+              </div>
             </div>
+            <div>
+              <h1 className="text-4xl font-semibold text-gray-900 dark:text-gray-100 mb-2">{company?.name}</h1>
+              <div className="flex items-center gap-4 text-gray-600 dark:text-gray-400">
+                <span>{company?.industry}</span>
+                <span>•</span>
+                <span>{company?.country}</span>
+                <span>•</span>
+                <span>{company?.size} employees</span>
+                <Badge className={getStatusColor(company?.status)}>
+                  {company?.status}
+                </Badge>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={openEditCompanyDialog}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Company
+            </Button>
           </div>
         </div>
       </div>
@@ -351,27 +622,25 @@ function CompanyDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <UserPlus className="h-4 w-4 text-gray-500" />
-                    <div>
-                      <p className="text-sm text-gray-900 dark:text-gray-100">New user registered</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">2 hours ago</p>
+                  {recentActivity.length > 0 ? (
+                    recentActivity.map((activity, index) => (
+                      <div key={index} className="flex items-center gap-3">
+                        {getActivityIcon(activity.type)}
+                        <div>
+                          <p className="text-sm text-gray-900 dark:text-gray-100">{activity.description}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {formatActivityTime(activity.timestamp)}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4">
+                      <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500 dark:text-gray-400">No recent activity</p>
+                      <p className="text-xs text-gray-400">Activity will appear here as users interact with the platform</p>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <BookOpen className="h-4 w-4 text-gray-500" />
-                    <div>
-                      <p className="text-sm text-gray-900 dark:text-gray-100">Course completed</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">1 day ago</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Award className="h-4 w-4 text-gray-500" />
-                    <div>
-                      <p className="text-sm text-gray-900 dark:text-gray-100">Certificate issued</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">2 days ago</p>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -388,11 +657,11 @@ function CompanyDetailPage() {
                   Add User
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
+              <DialogContent className="sm:max-w-[700px] max-w-[90vw]">
                 <DialogHeader>
-                  <DialogTitle>Add New User</DialogTitle>
+                  <DialogTitle>{editingUser ? 'Edit User' : 'Add New User'}</DialogTitle>
                   <DialogDescription>
-                    Create a new user account for this company.
+                    {editingUser ? 'Update user account information.' : 'Create a new user account for this company.'}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -436,9 +705,12 @@ function CompanyDetailPage() {
                       <Label htmlFor="user-department">Department *</Label>
                       <Select 
                         value={userFormData.department_id}
-                        onValueChange={(value) => setUserFormData({ ...userFormData, department_id: value })}
+                        onValueChange={(value) => {
+                          setUserFormData({ ...userFormData, department_id: value });
+                          setDepartmentError(false);
+                        }}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className={departmentError ? "border-red-500 focus:border-red-500" : ""}>
                           <SelectValue placeholder="Select department" />
                         </SelectTrigger>
                         <SelectContent>
@@ -451,23 +723,88 @@ function CompanyDetailPage() {
                       </Select>
                     </div>
                   </div>
-                  <div>
-                    <Label htmlFor="user-password">Temporary Password</Label>
-                    <Input
-                      id="user-password"
-                      type="password"
-                      value={userFormData.password}
-                      onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
-                    />
-                    <p className="text-xs text-gray-500 mt-1">User will be prompted to change on first login</p>
+                  {/* Password Section */}
+                  <div className='space-y-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-900'>
+                    <h4 className='font-medium text-sm text-gray-700 dark:text-gray-300'>
+                      User Account Password
+                    </h4>
+                    <div className='grid grid-cols-1 gap-4'>
+                      <div>
+                        <Label htmlFor='user-password'>Password *</Label>
+                        <div className='flex gap-2'>
+                          <Input
+                            id='user-password'
+                            type={showUserPassword ? 'text' : 'password'}
+                            value={userFormData.password}
+                            onChange={(e) =>
+                              setUserFormData({
+                                ...userFormData,
+                                password: e.target.value,
+                              })
+                            }
+                            placeholder='Strong password'
+                            className='flex-1'
+                          />
+                          <Button
+                            type='button'
+                            variant='outline'
+                            onClick={() => setShowUserPassword(!showUserPassword)}
+                            className='flex-shrink-0'
+                          >
+                            {showUserPassword ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
+                          </Button>
+                          {userFormData.password && (
+                            <Button
+                              type='button'
+                              variant='outline'
+                              onClick={handleCopyUserPassword}
+                              className='flex-shrink-0'
+                            >
+                              {copiedUserPassword ? <Check className='h-4 w-4' /> : <Copy className='h-4 w-4' />}
+                            </Button>
+                          )}
+                          <Button
+                            type='button'
+                            variant='outline'
+                            onClick={handleGenerateUserPassword}
+                            className='flex-shrink-0'
+                          >
+                            <RefreshCw className='h-4 w-4 mr-1' />
+                            Generate
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor='user-password-confirm'>Confirm Password *</Label>
+                        <Input
+                          id='user-password-confirm'
+                          type={showUserPassword ? 'text' : 'password'}
+                          value={userFormData.password_confirm}
+                          onChange={(e) =>
+                            setUserFormData({
+                              ...userFormData,
+                              password_confirm: e.target.value,
+                            })
+                          }
+                          placeholder='Repeat password'
+                        />
+                        {userFormData.password && userFormData.password_confirm && 
+                          userFormData.password !== userFormData.password_confirm && (
+                          <p className='text-xs text-red-500 mt-1'>
+                            Passwords do not match
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500">User will be prompted to change password on first login</p>
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => {setShowUserDialog(false); resetUserForm();}}>
+                  <Button variant="outline" onClick={() => {setShowUserDialog(false); resetUserForm(); setEditingUser(null);}}>
                     Cancel
                   </Button>
                   <Button onClick={handleCreateUser}>
-                    Create User
+                    {editingUser ? 'Update User' : 'Create User'}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -510,14 +847,24 @@ function CompanyDetailPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-gray-600 dark:text-gray-400">
-                        {new Date(user.last_active).toLocaleDateString()}
+                        {user.last_active ? new Date(user.last_active).toLocaleDateString() : 'Recently'}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button size="sm" variant="ghost">
-                            <Edit className="h-4 w-4" />
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleEditUser(user)}
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Edit
                           </Button>
-                          <Button size="sm" variant="ghost">
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -540,7 +887,7 @@ function CompanyDetailPage() {
                   Add Department
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[400px]">
+              <DialogContent className="sm:max-w-[600px] max-w-[90vw]">
                 <DialogHeader>
                   <DialogTitle>Add New Department</DialogTitle>
                   <DialogDescription>
@@ -573,16 +920,29 @@ function CompanyDetailPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {departments.map((department) => (
               <Card key={department.id}>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-lg">{department.name}</CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteDepartment(department.id)}
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-gray-500" />
                     <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {department.user_count} users
+                      {department.user_count || 0} users
                     </span>
                   </div>
+                  {department.description && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                      {department.description}
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -650,6 +1010,127 @@ function CompanyDetailPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Edit Company Dialog */}
+      <Dialog open={showEditCompanyDialog} onOpenChange={setShowEditCompanyDialog}>
+        <DialogContent className="sm:max-w-[600px] max-w-[90vw]">
+          <DialogHeader>
+            <DialogTitle>Edit Company</DialogTitle>
+            <DialogDescription>
+              Update company information and settings.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-name">Company Name</Label>
+                <Input
+                  id="edit-name"
+                  value={editCompanyData.name}
+                  onChange={(e) => setEditCompanyData({...editCompanyData, name: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-slug">Company Slug</Label>
+                <Input
+                  id="edit-slug"
+                  value={editCompanyData.slug}
+                  onChange={(e) => setEditCompanyData({...editCompanyData, slug: e.target.value})}
+                  placeholder="company-slug"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-industry">Industry</Label>
+                <Select
+                  value={editCompanyData.industry}
+                  onValueChange={(value) => setEditCompanyData({...editCompanyData, industry: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Software Development">Software Development</SelectItem>
+                    <SelectItem value="Financial Services">Financial Services</SelectItem>
+                    <SelectItem value="Healthcare">Healthcare</SelectItem>
+                    <SelectItem value="Manufacturing">Manufacturing</SelectItem>
+                    <SelectItem value="Retail">Retail</SelectItem>
+                    <SelectItem value="Education">Education</SelectItem>
+                    <SelectItem value="Consulting">Consulting</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="edit-country">Country</Label>
+                <Select
+                  value={editCompanyData.country}
+                  onValueChange={(value) => setEditCompanyData({...editCompanyData, country: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Netherlands">Netherlands</SelectItem>
+                    <SelectItem value="Belgium">Belgium</SelectItem>
+                    <SelectItem value="Germany">Germany</SelectItem>
+                    <SelectItem value="France">France</SelectItem>
+                    <SelectItem value="United Kingdom">United Kingdom</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="edit-size">Company Size</Label>
+              <Select
+                value={editCompanyData.size}
+                onValueChange={(value) => setEditCompanyData({...editCompanyData, size: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1-10">1-10 employees</SelectItem>
+                  <SelectItem value="11-50">11-50 employees</SelectItem>
+                  <SelectItem value="51-200">51-200 employees</SelectItem>
+                  <SelectItem value="201-500">201-500 employees</SelectItem>
+                  <SelectItem value="501-1000">501-1000 employees</SelectItem>
+                  <SelectItem value="1000+">1000+ employees</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="edit-logo">Company Logo</Label>
+            <div className="flex items-center gap-4 mt-2">
+              {company?.logo_url && (
+                <img
+                  src={company.logo_url.startsWith('http') ? company.logo_url : `http://localhost:5000${company.logo_url}`}
+                  alt={`${company.name} logo`}
+                  className="h-12 w-12 object-contain rounded border bg-white"
+                />
+              )}
+              <Input
+                id="edit-logo"
+                type="file"
+                accept="image/*"
+                onChange={(e) => setEditCompanyData({...editCompanyData, logo: e.target.files[0]})}
+                className="flex-1"
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Upload a new logo (PNG, JPG, max 2MB)</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditCompanyDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditCompany}>Update Company</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       </div>
     </DashboardLayout>
   );

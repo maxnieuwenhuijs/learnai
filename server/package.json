@@ -19,7 +19,13 @@
     "clear-data": "node src/scripts/clear-all-data.js",
     "postinstall": "echo 'Installation completed. Please configure your .env file and run: npm run pm2:start'"
   },
-  "keywords": ["elearning", "api", "nodejs", "express", "mysql"],
+  "keywords": [
+    "elearning",
+    "api",
+    "nodejs",
+    "express",
+    "mysql"
+  ],
   "author": "HowToWorkWith.AI",
   "license": "MIT",
   "engines": {
@@ -36,6 +42,7 @@
     "express-session": "^1.18.2",
     "express-validator": "^7.2.1",
     "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
     "mysql2": "^3.14.3",
     "nodemailer": "^7.0.5",
     "passport": "^0.7.0",
@@ -43,6 +50,7 @@
     "passport-microsoft": "^2.1.0",
     "pdfkit": "^0.17.1",
     "sequelize": "^6.37.7",
+    "sharp": "^0.34.3",
     "uuid": "^11.1.0"
   },
   "devDependencies": {

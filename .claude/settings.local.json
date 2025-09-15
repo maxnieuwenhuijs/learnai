@@ -37,7 +37,8 @@
       "Read(c:\\Users\\maxni\\Desktop/**)",
       "Bash(pm2 show:*)",
       "Bash(npm run:*)",
-      "Read(C:\\Users\\maxni\\Desktop/**)"
+      "Read(C:\\Users\\maxni\\Desktop/**)",
+      "Bash(npm start)"
     ],
     "deny": [],
     "ask": []

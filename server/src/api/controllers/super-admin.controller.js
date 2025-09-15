@@ -1,4 +1,4 @@
-const { User, Company, Department, Course, UserProgress, Prompt, PromptCategory, PromptVersion, PromptApproval, PromptUsage, AuditLog, Certificate } = require('../../models');
+const { User, Company, Department, Course, Module, Lesson, CourseModule, UserProgress, Prompt, PromptCategory, PromptVersion, PromptApproval, PromptUsage, AuditLog, Certificate } = require('../../models');
 const { validationResult } = require('express-validator');
 const bcrypt = require('bcrypt');
 const { Op } = require('sequelize');
@@ -18,6 +18,7 @@ const getCompanies = async (req, res) => {
         const companiesData = companies.map(company => ({
             id: company.id,
             name: company.name,
+            slug: company.slug,
             industry: company.industry,
             country: company.country,
             size: company.size,
@@ -58,6 +59,7 @@ const createCompany = async (req, res) => {
 
         const {
             name,
+            slug,
             industry,
             country,
             size,
@@ -76,6 +78,18 @@ const createCompany = async (req, res) => {
             });
         }
 
+        // Generate slug if not provided
+        const finalSlug = slug || Company.generateSlug(name);
+
+        // Check if slug already exists
+        const existingSlug = await Company.findOne({ where: { slug: finalSlug } });
+        if (existingSlug) {
+            return res.status(400).json({
+                success: false,
+                message: `Company slug "${finalSlug}" already exists. Please choose a different slug.`
+            });
+        }
+
         // Check if admin email already exists
         const existingUser = await User.findOne({ where: { email: admin_email } });
         if (existingUser) {
@@ -88,6 +102,7 @@ const createCompany = async (req, res) => {
         // Create company first (without logo)
         const company = await Company.create({
             name,
+            slug: finalSlug,
             industry,
             country,
             size,
@@ -185,7 +200,7 @@ const createCompany = async (req, res) => {
 const updateCompany = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, industry, country, size, description } = req.body;
+        const { name, slug, industry, country, size, description } = req.body;
 
         const company = await Company.findByPk(id);
         if (!company) {
@@ -195,13 +210,50 @@ const updateCompany = async (req, res) => {
             });
         }
 
+        // Handle logo upload
+        let logoData = {};
+        if (req.file) {
+            try {
+                // Delete old logo if exists
+                if (company.logo_url) {
+                    await deleteCompanyLogo(company.logo_url);
+                }
+
+                const logoResult = await processCompanyLogo(req.file.buffer, req.file.originalname, id);
+                logoData = {
+                    logo_url: logoResult.url,
+                    logo_filename: logoResult.filename
+                };
+            } catch (logoError) {
+                console.error('Logo processing error:', logoError);
+                return res.status(400).json({
+                    success: false,
+                    message: 'Logo upload failed: ' + logoError.message
+                });
+            }
+        }
+
+        const oldValues = {
+            name: company.name,
+            slug: company.slug,
+            industry: company.industry,
+            country: company.country,
+            size: company.size,
+            description: company.description
+        };
+
         await company.update({
             name,
+            slug,
             industry,
             country,
             size,
-            description
+            description,
+            ...logoData
         });
+
+        // Log company update
+        await auditLogger.logCompanyUpdated(req.user?.id || 1, company.id, oldValues, { name, slug, industry, country, size, description }, req);
 
         res.json({
             success: true,
@@ -457,11 +509,22 @@ const getCompanyDetails = async (req, res) => {
             userCount = await User.count({ where: { company_id: id } });
             users = await User.findAll({
                 where: { company_id: id },
-                attributes: ['id', 'name', 'email', 'role', 'created_at'],
+                attributes: ['id', 'name', 'email', 'role', 'department_id', 'created_at'],
+                include: [{
+                    model: Department,
+                    as: 'department',
+                    attributes: ['id', 'name'],
+                    required: false
+                }],
                 limit: 10
             });
         } catch (e) {
-            console.log('Users query failed, using defaults');
+            console.log('Users query failed, using defaults:', e.message);
+        }
+
+        console.log('Users found:', users.length);
+        if (users.length > 0) {
+            console.log('First user:', JSON.stringify(users[0], null, 2));
         }
 
         try {
@@ -470,14 +533,52 @@ const getCompanyDetails = async (req, res) => {
                 where: { company_id: id },
                 attributes: ['id', 'name']
             });
+
+
+            // Add user count to each department
+            for (let dept of departments) {
+                try {
+                    const userCount = await User.count({
+                        where: {
+                            company_id: id,
+                            department_id: dept.id
+                        }
+                    });
+                    dept.dataValues.user_count = userCount;
+                } catch (e) {
+                    dept.dataValues.user_count = 0;
+                }
+            }
         } catch (e) {
-            console.log('Departments query failed, using defaults');
+            console.log('Departments query failed, using defaults:', e.message);
         }
 
         try {
             courseCount = await Course.count({ where: { company_id: id } });
         } catch (e) {
             console.log('Courses query failed, using defaults');
+        }
+
+        // Get recent activity from audit logs
+        let recentActivity = [];
+        try {
+            const auditLogs = await AuditLog.findAll({
+                where: { company_id: id },
+                order: [['created_at', 'DESC']],
+                limit: 10,
+                attributes: ['action', 'description', 'created_at', 'entity_type']
+            });
+
+            recentActivity = auditLogs.map(log => ({
+                type: log.action,
+                description: log.description,
+                timestamp: log.created_at,
+                entity_type: log.entity_type
+            }));
+
+            console.log(`Found ${auditLogs.length} audit logs for company ${id}`);
+        } catch (e) {
+            console.log('Recent activity query failed, using empty array:', e.message);
         }
 
         res.json({
@@ -487,6 +588,7 @@ const getCompanyDetails = async (req, res) => {
                 users: users,
                 departments: departments,
                 courses: [],
+                recent_activity: recentActivity,
                 stats: {
                     user_count: userCount,
                     department_count: departmentCount,
@@ -517,36 +619,35 @@ const resetDatabase = async (req, res) => {
             });
         }
 
-        // Log database reset action before performing it
-        await auditLogger.logDatabaseReset(req.user.id, req);
+        // Clear all data in correct order (respecting foreign key constraints)
+        // First clear all audit logs to avoid foreign key issues
+        await AuditLog.destroy({ where: {} });
 
-        // Delete all data in correct order (respecting foreign key constraints)
+        // Then clear dependent tables first
         await Promise.all([
             UserProgress.destroy({ where: {} }),
             Certificate.destroy({ where: {} }),
             PromptUsage.destroy({ where: {} }),
             PromptApproval.destroy({ where: {} }),
             PromptVersion.destroy({ where: {} }),
-            Prompt.destroy({ where: {} }),
-            PromptCategory.destroy({ where: {} })
         ]);
 
+        // Then clear main tables
+        await Prompt.destroy({ where: {} });
+        await PromptCategory.destroy({ where: {} });
         await User.destroy({ where: {} });
         await Course.destroy({ where: {} });
         await Department.destroy({ where: {} });
         await Company.destroy({ where: {} });
 
-        // Clear audit logs except for this reset action
-        const resetLogId = await AuditLog.max('id');
-        await AuditLog.destroy({
-            where: {
-                id: { [Op.lt]: resetLogId }
-            }
-        });
+        // Log database reset action after clearing (for standalone admin)
+        if (req.user && req.user.standalone) {
+            console.log('✅ Database completely reset by standalone super admin');
+        }
 
         res.json({
             success: true,
-            message: 'Database has been completely reset'
+            message: 'Database has been completely reset - Starting fresh!'
         });
     } catch (error) {
         console.error('Error resetting database:', error);
@@ -1079,7 +1180,7 @@ const getAuditLogs = async (req, res) => {
         if (company_id) whereClause.company_id = company_id;
 
         let auditLogs = { rows: [], count: 0 };
-        
+
         try {
             auditLogs = await AuditLog.findAndCountAll({
                 where: whereClause,
@@ -1142,7 +1243,7 @@ const getSystemMetrics = async (req, res) => {
         } else {
             // Try to get metrics from database with fallback
             let groupedMetrics = {};
-            
+
             try {
                 const startTime = new Date(Date.now() - (parseInt(hours) * 60 * 60 * 1000));
                 const whereClause = {
@@ -1232,6 +1333,777 @@ const getSystemHealth = async (req, res) => {
     }
 };
 
+// Create department for a company
+const createDepartment = async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                success: false,
+                errors: errors.array()
+            });
+        }
+
+        const { companyId } = req.params;
+        const { name } = req.body;
+
+        // Check if company exists
+        const company = await Company.findByPk(companyId);
+        if (!company) {
+            return res.status(404).json({
+                success: false,
+                message: 'Company not found'
+            });
+        }
+
+        // Check if department name already exists in this company
+        const existingDepartment = await Department.findOne({
+            where: { name, company_id: companyId }
+        });
+        if (existingDepartment) {
+            return res.status(400).json({
+                success: false,
+                message: 'Department with this name already exists in this company'
+            });
+        }
+
+        // Create department
+        const department = await Department.create({
+            name,
+            company_id: companyId
+        });
+
+        // Log department creation
+        await auditLogger.log({
+            userId: req.user?.id || 1,
+            companyId: companyId,
+            action: 'department_created',
+            entityType: 'department',
+            entityId: department.id,
+            newValues: { name: department.name },
+            severity: 'medium',
+            description: `Created department: ${department.name}`,
+            req
+        });
+
+        res.status(201).json({
+            success: true,
+            message: 'Department created successfully',
+            department: {
+                id: department.id,
+                name: department.name,
+                user_count: 0
+            }
+        });
+    } catch (error) {
+        console.error('Error creating department:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error creating department',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// Delete department from a company
+const deleteDepartment = async (req, res) => {
+    try {
+        const { companyId, departmentId } = req.params;
+
+        // Check if company exists
+        const company = await Company.findByPk(companyId);
+        if (!company) {
+            return res.status(404).json({
+                success: false,
+                message: 'Company not found'
+            });
+        }
+
+        // Check if department exists and belongs to this company
+        const department = await Department.findOne({
+            where: { id: departmentId, company_id: companyId }
+        });
+        if (!department) {
+            return res.status(404).json({
+                success: false,
+                message: 'Department not found in this company'
+            });
+        }
+
+        // Check if department has users
+        const userCount = await User.count({
+            where: { department_id: departmentId }
+        });
+        if (userCount > 0) {
+            return res.status(400).json({
+                success: false,
+                message: `Cannot delete department. It has ${userCount} user(s). Please reassign users first.`
+            });
+        }
+
+        // Delete department
+        await department.destroy();
+
+        res.json({
+            success: true,
+            message: 'Department deleted successfully'
+        });
+    } catch (error) {
+        console.error('Error deleting department:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error deleting department',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// Create user for a specific company
+const createCompanyUser = async (req, res) => {
+    console.log('createCompanyUser called with:', { companyId: req.params.companyId, body: req.body });
+    try {
+        const { companyId } = req.params;
+        const { name, email, password, role, department_id } = req.body;
+
+        // Check if company exists
+        const company = await Company.findByPk(companyId);
+        if (!company) {
+            return res.status(404).json({
+                success: false,
+                message: 'Company not found'
+            });
+        }
+
+        // Check if email already exists
+        const existingUser = await User.findOne({ where: { email } });
+        if (existingUser) {
+            console.log('Email already exists:', email);
+            return res.status(400).json({
+                success: false,
+                message: 'User with this email already exists'
+            });
+        }
+
+        // If department_id is provided, verify it belongs to this company
+        if (department_id) {
+            const department = await Department.findOne({
+                where: { id: department_id, company_id: companyId }
+            });
+            if (!department) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Department not found in this company'
+                });
+            }
+        }
+
+        // Create user
+        const user = await User.create({
+            name,
+            email,
+            password_hash: password,
+            role: role || 'participant',
+            company_id: companyId,
+            department_id: department_id || null
+        });
+
+        // Log the user creation
+        await auditLogger.logUserCreated(req.user?.id || 1, user, req);
+
+        res.status(201).json({
+            success: true,
+            message: 'User created successfully',
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                company_id: user.company_id,
+                department_id: user.department_id
+            }
+        });
+    } catch (error) {
+        console.error('Error creating company user:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error creating user',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// Update user
+const updateUser = async (req, res) => {
+    console.log('updateUser called with:', { id: req.params.id, body: req.body });
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                success: false,
+                errors: errors.array()
+            });
+        }
+
+        const { id } = req.params;
+        const { name, email, role, department_id } = req.body;
+
+        // Check if user exists
+        const user = await User.findByPk(id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // Check if email is already taken by another user
+        if (email !== user.email) {
+            const existingUser = await User.findOne({
+                where: { email, id: { [Op.ne]: id } }
+            });
+            if (existingUser) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Email is already taken by another user'
+                });
+            }
+        }
+
+        // Update user
+        await user.update({
+            name,
+            email,
+            role,
+            department_id: department_id || null
+        });
+
+        res.json({
+            success: true,
+            message: 'User updated successfully',
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                department_id: user.department_id
+            }
+        });
+    } catch (error) {
+        console.error('Error updating user:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error updating user',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// Delete user
+const deleteUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Check if user exists
+        const user = await User.findByPk(id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // Delete the user
+        await user.destroy();
+
+        res.json({
+            success: true,
+            message: 'User deleted successfully'
+        });
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error deleting user',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// Course Management Functions
+const getCourses = async (req, res) => {
+    try {
+        const { page = 1, limit = 10, search = '', status = 'all', company_id } = req.query;
+
+        const where = {};
+        if (company_id) where.company_id = company_id;
+        if (status !== 'all') where.status = status;
+        if (search) {
+            where[Op.or] = [
+                { title: { [Op.like]: `%${search}%` } },
+                { description: { [Op.like]: `%${search}%` } }
+            ];
+        }
+
+        const courses = await Course.findAndCountAll({
+            where,
+            limit: parseInt(limit),
+            offset: (parseInt(page) - 1) * parseInt(limit),
+            order: [['created_at', 'DESC']],
+            include: [{
+                model: Company,
+                as: 'company',
+                attributes: ['id', 'name']
+            }]
+        });
+
+        res.json({
+            success: true,
+            courses: courses.rows,
+            pagination: {
+                total: courses.count,
+                page: parseInt(page),
+                pages: Math.ceil(courses.count / parseInt(limit))
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching courses:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching courses'
+        });
+    }
+};
+
+// Get single course
+const getCourse = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const course = await Course.findByPk(id, {
+            include: [
+                {
+                    model: Company,
+                    as: 'company',
+                    attributes: ['id', 'name']
+                },
+                {
+                    model: User,
+                    as: 'creator',
+                    attributes: ['id', 'name', 'email'],
+                    required: false
+                },
+                {
+                    model: Module,
+                    as: 'modules',
+                    through: { attributes: [] },
+                    order: [['order', 'ASC']],
+                    include: [
+                        {
+                            model: Lesson,
+                            as: 'lessons',
+                            order: [['lesson_order', 'ASC']]
+                        }
+                    ]
+                }
+            ]
+        });
+
+        if (!course) {
+            return res.status(404).json({
+                success: false,
+                message: 'Course not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            course
+        });
+    } catch (error) {
+        console.error('Error fetching course:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching course'
+        });
+    }
+};
+
+const createCourse = async (req, res) => {
+    try {
+        const { title, description, company_id, difficulty_level, estimated_duration } = req.body;
+
+        const course = await Course.create({
+            title,
+            description,
+            company_id,
+            difficulty: difficulty_level || 'beginner',
+            duration_hours: (estimated_duration || 60) / 60, // Convert minutes to hours
+            is_published: false,
+            created_by: req.user?.id === 'super_admin' ? null : (req.user?.id || 1)
+        });
+
+        // Log course creation
+        await auditLogger.log({
+            userId: req.user?.id === 'super_admin' ? null : (req.user?.id || 1),
+            companyId: company_id,
+            action: 'course_created',
+            entityType: 'course',
+            entityId: course.id,
+            newValues: { title, description, difficulty_level, estimated_duration },
+            severity: 'medium',
+            description: `Created course: ${title}`,
+            req
+        });
+
+        res.status(201).json({
+            success: true,
+            message: 'Course created successfully',
+            course
+        });
+    } catch (error) {
+        console.error('Error creating course:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error creating course'
+        });
+    }
+};
+
+const updateCourse = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, description, difficulty_level, difficulty, estimated_duration, duration_hours, category, is_published } = req.body;
+
+        const course = await Course.findByPk(id);
+        if (!course) {
+            return res.status(404).json({
+                success: false,
+                message: 'Course not found'
+            });
+        }
+
+        const oldValues = {
+            title: course.title,
+            description: course.description,
+            difficulty: course.difficulty,
+            duration_hours: course.duration_hours,
+            is_published: course.is_published
+        };
+
+        await course.update({
+            title,
+            description,
+            category: category || course.category,
+            difficulty: difficulty_level || difficulty || course.difficulty,
+            duration_hours: duration_hours || (estimated_duration ? estimated_duration / 60 : course.duration_hours),
+            is_published: is_published !== undefined ? is_published : course.is_published
+        });
+
+        // Log course update
+        await auditLogger.log({
+            userId: req.user?.id === 'super_admin' ? null : (req.user?.id || 1),
+            companyId: course.company_id,
+            action: 'course_updated',
+            entityType: 'course',
+            entityId: course.id,
+            oldValues,
+            newValues: { title, description, difficulty_level, estimated_duration, is_published },
+            severity: 'medium',
+            description: `Updated course: ${title}`,
+            req
+        });
+
+        res.json({
+            success: true,
+            message: 'Course updated successfully',
+            course
+        });
+    } catch (error) {
+        console.error('Error updating course:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error updating course'
+        });
+    }
+};
+
+const deleteCourse = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const course = await Course.findByPk(id);
+        if (!course) {
+            return res.status(404).json({
+                success: false,
+                message: 'Course not found'
+            });
+        }
+
+        await course.destroy();
+
+        // Log course deletion
+        await auditLogger.log({
+            userId: req.user?.id === 'super_admin' ? null : (req.user?.id || 1),
+            companyId: course.company_id,
+            action: 'course_deleted',
+            entityType: 'course',
+            entityId: course.id,
+            oldValues: { title: course.title, description: course.description },
+            severity: 'high',
+            description: `Deleted course: ${course.title}`,
+            req
+        });
+
+        res.json({
+            success: true,
+            message: 'Course deleted successfully'
+        });
+    } catch (error) {
+        console.error('Error deleting course:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error deleting course'
+        });
+    }
+};
+
+// Module Management
+const getCourseModules = async (req, res) => {
+    try {
+        const { courseId } = req.params;
+
+        const modules = await Module.findAll({
+            include: [{
+                model: Course,
+                as: 'courses',
+                where: { id: courseId },
+                through: { attributes: [] }
+            }],
+            order: [['order', 'ASC']]
+        });
+
+        res.json({
+            success: true,
+            modules
+        });
+    } catch (error) {
+        console.error('Error fetching modules:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching modules'
+        });
+    }
+};
+
+const createModule = async (req, res) => {
+    try {
+        const { courseId } = req.params;
+        const { title, description, estimated_duration_minutes, order } = req.body;
+
+        // Get current module count for ordering if order not provided
+        const moduleCount = await CourseModule.count({ where: { course_id: courseId } });
+        const moduleOrder = order !== undefined ? order : moduleCount + 1;
+
+        const module = await Module.create({
+            title,
+            description,
+            estimated_duration_minutes,
+            order: moduleOrder
+        });
+
+        // Link module to course
+        await CourseModule.create({
+            course_id: courseId,
+            module_id: module.id,
+            module_order: moduleOrder
+        });
+
+        res.status(201).json({
+            success: true,
+            message: 'Module created successfully',
+            module
+        });
+    } catch (error) {
+        console.error('Error creating module:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error creating module'
+        });
+    }
+};
+
+const updateModule = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, description, estimated_duration_minutes, order } = req.body;
+
+        const module = await Module.findByPk(id);
+        if (!module) {
+            return res.status(404).json({
+                success: false,
+                message: 'Module not found'
+            });
+        }
+
+        await module.update({
+            title,
+            description,
+            estimated_duration_minutes,
+            order: order !== undefined ? order : module.order
+        });
+
+        res.json({
+            success: true,
+            message: 'Module updated successfully',
+            module
+        });
+    } catch (error) {
+        console.error('Error updating module:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error updating module'
+        });
+    }
+};
+
+const deleteModule = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const module = await Module.findByPk(id);
+        if (!module) {
+            return res.status(404).json({
+                success: false,
+                message: 'Module not found'
+            });
+        }
+
+        await module.destroy();
+
+        res.json({
+            success: true,
+            message: 'Module deleted successfully'
+        });
+    } catch (error) {
+        console.error('Error deleting module:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error deleting module'
+        });
+    }
+};
+
+// Lesson Management
+const getModuleLessons = async (req, res) => {
+    try {
+        const { moduleId } = req.params;
+
+        const lessons = await Lesson.findAll({
+            where: { module_id: moduleId },
+            order: [['lesson_order', 'ASC']]
+        });
+
+        res.json({
+            success: true,
+            lessons
+        });
+    } catch (error) {
+        console.error('Error fetching lessons:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching lessons'
+        });
+    }
+};
+
+const createLesson = async (req, res) => {
+    try {
+        const { moduleId } = req.params;
+        const { title, content_type, content_data, lesson_order } = req.body;
+
+        const lesson = await Lesson.create({
+            module_id: moduleId,
+            title,
+            content_type,
+            content_data,
+            lesson_order: lesson_order || 1
+        });
+
+        res.status(201).json({
+            success: true,
+            message: 'Lesson created successfully',
+            lesson
+        });
+    } catch (error) {
+        console.error('Error creating lesson:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error creating lesson'
+        });
+    }
+};
+
+const updateLesson = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, content_type, content_data, lesson_order } = req.body;
+
+        const lesson = await Lesson.findByPk(id);
+        if (!lesson) {
+            return res.status(404).json({
+                success: false,
+                message: 'Lesson not found'
+            });
+        }
+
+        await lesson.update({
+            title,
+            content_type,
+            content_data,
+            lesson_order
+        });
+
+        res.json({
+            success: true,
+            message: 'Lesson updated successfully',
+            lesson
+        });
+    } catch (error) {
+        console.error('Error updating lesson:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error updating lesson'
+        });
+    }
+};
+
+const deleteLesson = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const lesson = await Lesson.findByPk(id);
+        if (!lesson) {
+            return res.status(404).json({
+                success: false,
+                message: 'Lesson not found'
+            });
+        }
+
+        await lesson.destroy();
+
+        res.json({
+            success: true,
+            message: 'Lesson deleted successfully'
+        });
+    } catch (error) {
+        console.error('Error deleting lesson:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error deleting lesson'
+        });
+    }
+};
+
 module.exports = {
     getCompanies,
     createCompany,
@@ -1240,6 +2112,9 @@ module.exports = {
     getCompanyDetails,
     createUser,
     createCompanyManager,
+    createCompanyUser,
+    createDepartment,
+    deleteDepartment,
     getDashboardStats,
     resetDatabase,
     createSeedData,
@@ -1252,6 +2127,8 @@ module.exports = {
     // Super Admin User Management
     getAllUsers,
     getUserAnalytics,
+    updateUser,
+    deleteUser,
     // Super Admin Analytics
     getAnalyticsOverview,
     getAnalyticsTrends,
@@ -1259,5 +2136,21 @@ module.exports = {
     // Super Admin Audit & Monitoring
     getAuditLogs,
     getSystemMetrics,
-    getSystemHealth
+    getSystemHealth,
+    // Course Management
+    getCourses,
+    getCourse,
+    createCourse,
+    updateCourse,
+    deleteCourse,
+    // Module Management
+    getCourseModules,
+    createModule,
+    updateModule,
+    deleteModule,
+    // Lesson Management
+    getModuleLessons,
+    createLesson,
+    updateLesson,
+    deleteLesson
 };

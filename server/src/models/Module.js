@@ -18,6 +18,11 @@ const Module = sequelize.define('Module', {
     estimated_duration_minutes: {
         type: DataTypes.INTEGER,
         allowNull: true
+    },
+    order: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
     }
 }, {
     tableName: 'modules',

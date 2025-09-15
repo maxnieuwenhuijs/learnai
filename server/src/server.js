@@ -13,12 +13,19 @@ const { sequelize } = require('./config/database');
 // Import email queue service
 const emailQueueService = require('./services/emailQueue.service');
 
+// Import system monitoring
+const systemMonitoring = require('./services/system-monitoring.service');
+const metricsMiddleware = require('./middleware/metrics.middleware');
+
 // Create Express app
 const app = express();
 
 // Middleware
+// Add metrics tracking middleware
+app.use(metricsMiddleware);
+
 app.use(cors({
-    origin: function(origin, callback) {
+    origin: function (origin, callback) {
         // Allow requests from any localhost port during development
         const allowedOrigins = [
             'http://localhost:5173',
@@ -31,16 +38,16 @@ app.use(cors({
             'http://localhost:5180',
             'http://localhost:3000'
         ];
-        
+
         // Allow requests with no origin (like mobile apps or Postman)
         if (!origin) return callback(null, true);
-        
+
         if (process.env.NODE_ENV === 'production') {
             // In production, check against allowed domains
-            const allowedDomains = process.env.FRONTEND_URL ? 
-                process.env.FRONTEND_URL.split(',').map(url => url.trim()) : 
+            const allowedDomains = process.env.FRONTEND_URL ?
+                process.env.FRONTEND_URL.split(',').map(url => url.trim()) :
                 ['https://howtoworkwith.ai', 'https://h2ww.ai'];
-            
+
             if (allowedDomains.includes(origin)) {
                 return callback(null, true);
             }
@@ -50,13 +57,16 @@ app.use(cors({
                 return callback(null, true);
             }
         }
-        
+
         return callback(new Error('Not allowed by CORS'));
     },
     credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static('uploads'));
 
 // Session configuration for OAuth
 app.use(session({
@@ -169,8 +179,8 @@ if (emailRoutes) {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'OK', 
+    res.json({
+        status: 'OK',
         message: 'E-learning Platform API is running',
         timestamp: new Date().toISOString()
     });
@@ -227,22 +237,27 @@ async function startServer() {
         // Test database connection
         await sequelize.authenticate();
         console.log('✅ Database connection established successfully.');
-        
+
         // Sync database models (in development only)
         // Using force: false to avoid constraint issues with existing tables
         if (process.env.NODE_ENV === 'development') {
             await sequelize.sync({ force: false });
             console.log('✅ Database models synchronized.');
         }
-        
+
         // Start email queue service
         emailQueueService.start();
         console.log('📧 Email queue service started');
-        
+
+        // Start system monitoring
+        systemMonitoring.startPeriodicRecording(5); // Record metrics every 5 minutes
+        console.log('📊 System monitoring started');
+
         // Start server
         app.listen(PORT, () => {
             console.log(`🚀 Server is running on port ${PORT}`);
             console.log(`📡 API Health: http://localhost:${PORT}/api/health`);
+            console.log(`🔧 Super Admin API: http://localhost:${PORT}/api/super-admin`);
         });
     } catch (error) {
         console.error('❌ Unable to start server:', error);
