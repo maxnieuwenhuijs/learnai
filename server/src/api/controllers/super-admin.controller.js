@@ -1,4 +1,4 @@
-const { User, Company, Department, Course, Module, Lesson, CourseModule, UserProgress, Prompt, PromptCategory, PromptVersion, PromptApproval, PromptUsage, AuditLog, Certificate } = require('../../models');
+const { User, Company, Department, Course, Module, Lesson, CourseModule, UserProgress, Prompt, PromptCategory, PromptVersion, PromptApproval, PromptUsage, AuditLog, Certificate, CompanyCourseAssignment } = require('../../models');
 const { validationResult } = require('express-validator');
 const bcrypt = require('bcrypt');
 const { Op } = require('sequelize');
@@ -9,28 +9,69 @@ const { processCompanyLogo, deleteCompanyLogo, validateImageSpecs } = require('.
 // Get all companies
 const getCompanies = async (req, res) => {
     try {
-        // Simple query first to test basic functionality
+        // Get all companies
         const companies = await Company.findAll({
             order: [['created_at', 'DESC']]
         });
 
-        // Return basic company data without complex relationships for now
-        const companiesData = companies.map(company => ({
-            id: company.id,
-            name: company.name,
-            slug: company.slug,
-            industry: company.industry,
-            country: company.country,
-            size: company.size,
-            description: company.description,
-            status: company.status,
-            created_at: company.created_at,
-            user_count: 0, // Default for now
-            course_count: 0, // Default for now
-            admin_email: null, // Default for now
-            last_activity: company.created_at,
-            logo_url: company.logo_url,
-            logo_filename: company.logo_filename
+        // Get user counts for each company
+        const companiesData = await Promise.all(companies.map(async (company) => {
+            let userCount = 0;
+            let courseCount = 0;
+            let adminEmail = null;
+
+            try {
+                // Count users for this company
+                userCount = await User.count({ 
+                    where: { company_id: company.id } 
+                });
+
+                // Count courses for this company (own courses + assigned global courses)
+                const ownCoursesCount = await Course.count({ 
+                    where: { company_id: company.id } 
+                });
+                
+                const assignedGlobalCoursesCount = await CompanyCourseAssignment.count({
+                    where: { 
+                        company_id: company.id,
+                        is_active: true
+                    }
+                });
+                
+                courseCount = ownCoursesCount + assignedGlobalCoursesCount;
+
+                // Get admin email (first admin user)
+                const adminUser = await User.findOne({
+                    where: { 
+                        company_id: company.id,
+                        role: 'admin'
+                    },
+                    attributes: ['email']
+                });
+                adminEmail = adminUser ? adminUser.email : null;
+
+            } catch (error) {
+                console.log(`Error getting stats for company ${company.id}:`, error.message);
+                // Keep defaults if queries fail
+            }
+
+            return {
+                id: company.id,
+                name: company.name,
+                slug: company.slug,
+                industry: company.industry,
+                country: company.country,
+                size: company.size,
+                description: company.description,
+                status: company.status,
+                created_at: company.created_at,
+                user_count: userCount,
+                course_count: courseCount,
+                admin_email: adminEmail,
+                last_activity: company.created_at,
+                logo_url: company.logo_url,
+                logo_filename: company.logo_filename
+            };
         }));
 
         res.json({
@@ -553,10 +594,49 @@ const getCompanyDetails = async (req, res) => {
             console.log('Departments query failed, using defaults:', e.message);
         }
 
+        let courses = [];
         try {
-            courseCount = await Course.count({ where: { company_id: id } });
+            // Count company's own courses
+            const ownCoursesCount = await Course.count({ where: { company_id: id } });
+            
+            // Count assigned global courses for this company
+            const assignedGlobalCoursesCount = await CompanyCourseAssignment.count({
+                where: { 
+                    company_id: id,
+                    is_active: true 
+                }
+            });
+            
+            // Total course count = own courses + assigned global courses
+            courseCount = ownCoursesCount + assignedGlobalCoursesCount;
+            
+            // Get assigned global courses for this company
+            const assignedCourses = await CompanyCourseAssignment.findAll({
+                where: { 
+                    company_id: id,
+                    is_active: true 
+                },
+                include: [{
+                    model: Course,
+                    as: 'course',
+                    attributes: ['id', 'title', 'description', 'category', 'difficulty', 'duration_hours', 'is_global', 'is_published']
+                }]
+            });
+            
+            // Get company's own courses
+            const companyCourses = await Course.findAll({
+                where: { company_id: id },
+                attributes: ['id', 'title', 'description', 'category', 'difficulty', 'duration_hours', 'is_global', 'is_published']
+            });
+            
+            // Combine both types of courses
+            courses = [
+                ...companyCourses.map(course => ({ ...course.toJSON(), is_assigned: false })),
+                ...assignedCourses.map(assignment => ({ ...assignment.course.toJSON(), is_assigned: true }))
+            ];
+            
         } catch (e) {
-            console.log('Courses query failed, using defaults');
+            console.log('Courses query failed, using defaults:', e.message);
         }
 
         // Get recent activity from audit logs
@@ -587,7 +667,7 @@ const getCompanyDetails = async (req, res) => {
                 ...company.toJSON(),
                 users: users,
                 departments: departments,
-                courses: [],
+                courses: courses,
                 recent_activity: recentActivity,
                 stats: {
                     user_count: userCount,
@@ -1649,11 +1729,24 @@ const getCourses = async (req, res) => {
             limit: parseInt(limit),
             offset: (parseInt(page) - 1) * parseInt(limit),
             order: [['created_at', 'DESC']],
-            include: [{
-                model: Company,
-                as: 'company',
-                attributes: ['id', 'name']
-            }]
+            include: [
+                {
+                    model: Company,
+                    as: 'company',
+                    attributes: ['id', 'name']
+                },
+                {
+                    model: Module,
+                    as: 'modules',
+                    attributes: ['id', 'title', 'order'],
+                    through: { attributes: [] }, // Don't include junction table data
+                    include: [{
+                        model: Lesson,
+                        as: 'lessons',
+                        attributes: ['id', 'title', 'lesson_order']
+                    }]
+                }
+            ]
         });
 
         res.json({
@@ -1730,7 +1823,7 @@ const getCourse = async (req, res) => {
 
 const createCourse = async (req, res) => {
     try {
-        const { title, description, company_id, difficulty_level, estimated_duration } = req.body;
+        const { title, description, company_id, difficulty_level, estimated_duration, is_global } = req.body;
 
         const course = await Course.create({
             title,
@@ -1739,6 +1832,7 @@ const createCourse = async (req, res) => {
             difficulty: difficulty_level || 'beginner',
             duration_hours: (estimated_duration || 60) / 60, // Convert minutes to hours
             is_published: false,
+            is_global: is_global || false,
             created_by: req.user?.id === 'super_admin' ? null : (req.user?.id || 1)
         });
 
@@ -1772,7 +1866,7 @@ const createCourse = async (req, res) => {
 const updateCourse = async (req, res) => {
     try {
         const { id } = req.params;
-        const { title, description, difficulty_level, difficulty, estimated_duration, duration_hours, category, is_published } = req.body;
+        const { title, description, difficulty_level, difficulty, estimated_duration, duration_hours, category, is_published, is_global } = req.body;
 
         const course = await Course.findByPk(id);
         if (!course) {
@@ -1787,7 +1881,8 @@ const updateCourse = async (req, res) => {
             description: course.description,
             difficulty: course.difficulty,
             duration_hours: course.duration_hours,
-            is_published: course.is_published
+            is_published: course.is_published,
+            is_global: course.is_global
         };
 
         await course.update({
@@ -1796,7 +1891,8 @@ const updateCourse = async (req, res) => {
             category: category || course.category,
             difficulty: difficulty_level || difficulty || course.difficulty,
             duration_hours: duration_hours || (estimated_duration ? estimated_duration / 60 : course.duration_hours),
-            is_published: is_published !== undefined ? is_published : course.is_published
+            is_published: is_published !== undefined ? is_published : course.is_published,
+            is_global: is_global !== undefined ? is_global : course.is_global
         });
 
         // Log course update
@@ -1863,6 +1959,107 @@ const deleteCourse = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error deleting course'
+        });
+    }
+};
+
+const duplicateCourse = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, description, category, difficulty_level, estimated_duration, is_global } = req.body;
+
+        // Find the original course
+        const originalCourse = await Course.findByPk(id, {
+            include: [
+                {
+                    model: Module,
+                    as: 'modules',
+                    through: { attributes: [] },
+                    include: [{
+                        model: Lesson,
+                        as: 'lessons'
+                    }]
+                }
+            ]
+        });
+
+        if (!originalCourse) {
+            return res.status(404).json({
+                success: false,
+                message: 'Course not found'
+            });
+        }
+
+        // Create the duplicated course
+        const duplicatedCourse = await Course.create({
+            title: title || `${originalCourse.title} (Copy)`,
+            description: description || originalCourse.description,
+            category: category || originalCourse.category,
+            difficulty_level: difficulty_level || originalCourse.difficulty_level,
+            estimated_duration: estimated_duration || originalCourse.estimated_duration,
+            duration_hours: originalCourse.duration_hours,
+            is_global: is_global !== undefined ? is_global : originalCourse.is_global,
+            company_id: originalCourse.is_global ? null : originalCourse.company_id,
+            is_published: false // Always start as draft
+        });
+
+        // Duplicate modules and lessons
+        if (originalCourse.modules && originalCourse.modules.length > 0) {
+            for (let i = 0; i < originalCourse.modules.length; i++) {
+                const module = originalCourse.modules[i];
+                const duplicatedModule = await Module.create({
+                    title: module.title,
+                    description: module.description,
+                    order: module.order
+                });
+
+                // Associate module with course using the through option to set module_order
+                await duplicatedCourse.addModule(duplicatedModule, {
+                    through: { module_order: i + 1 }
+                });
+
+                // Duplicate lessons
+                if (module.lessons && module.lessons.length > 0) {
+                    for (const lesson of module.lessons) {
+                        await Lesson.create({
+                            title: lesson.title,
+                            content_type: lesson.content_type || 'text',
+                            content_data: lesson.content_data || lesson.content || null,
+                            lesson_order: lesson.lesson_order,
+                            module_id: duplicatedModule.id
+                        });
+                    }
+                }
+            }
+        }
+
+        // Log course duplication
+        await auditLogger.log({
+            userId: req.user?.id === 'super_admin' ? null : (req.user?.id || 1),
+            companyId: duplicatedCourse.company_id,
+            action: 'course_duplicated',
+            entityType: 'course',
+            entityId: duplicatedCourse.id,
+            newValues: { 
+                title: duplicatedCourse.title, 
+                description: duplicatedCourse.description,
+                original_course_id: originalCourse.id
+            },
+            severity: 'medium',
+            description: `Duplicated course: ${duplicatedCourse.title} from ${originalCourse.title}`,
+            req
+        });
+
+        res.json({
+            success: true,
+            message: 'Course duplicated successfully',
+            course: duplicatedCourse
+        });
+    } catch (error) {
+        console.error('Error duplicating course:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error duplicating course'
         });
     }
 };
@@ -2104,6 +2301,480 @@ const deleteLesson = async (req, res) => {
     }
 };
 
+// Company Course Assignment Management
+const getCompanyCourses = async (req, res) => {
+    try {
+        const { companyId } = req.params;
+
+        // Get assigned courses for the company
+        const assignedCourses = await CompanyCourseAssignment.findAll({
+            where: { 
+                company_id: companyId,
+                is_active: true 
+            },
+            include: [{
+                model: Course,
+                as: 'course',
+                attributes: ['id', 'title', 'description', 'category', 'difficulty', 'duration_hours', 'is_global', 'is_published']
+            }],
+            order: [['assigned_at', 'DESC']]
+        });
+
+        res.json({
+            success: true,
+            courses: assignedCourses.map(assignment => assignment.course)
+        });
+    } catch (error) {
+        console.error('Error fetching company courses:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching company courses'
+        });
+    }
+};
+
+const getAvailableGlobalCourses = async (req, res) => {
+    try {
+        const { companyId } = req.params;
+
+        // Get all global courses
+        const globalCourses = await Course.findAll({
+            where: { 
+                is_global: true,
+                is_published: true
+            },
+            attributes: ['id', 'title', 'description', 'category', 'difficulty', 'duration_hours', 'is_global']
+        });
+
+        // Get already assigned courses for this company
+        const assignedCourseIds = await CompanyCourseAssignment.findAll({
+            where: { 
+                company_id: companyId,
+                is_active: true 
+            },
+            attributes: ['course_id']
+        });
+
+        const assignedIds = assignedCourseIds.map(a => a.course_id);
+
+        // Filter out already assigned courses
+        const availableCourses = globalCourses.filter(course => !assignedIds.includes(course.id));
+
+        res.json({
+            success: true,
+            courses: availableCourses
+        });
+    } catch (error) {
+        console.error('Error fetching available global courses:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching available global courses'
+        });
+    }
+};
+
+const assignCourseToCompany = async (req, res) => {
+    try {
+        const { companyId } = req.params;
+        const { courseId } = req.body;
+
+        // Check if course is global
+        const course = await Course.findByPk(courseId);
+        if (!course || !course.is_global) {
+            return res.status(400).json({
+                success: false,
+                message: 'Course must be global to assign to companies'
+            });
+        }
+
+        // Check if already assigned
+        const existingAssignment = await CompanyCourseAssignment.findOne({
+            where: { 
+                company_id: companyId,
+                course_id: courseId 
+            }
+        });
+
+        if (existingAssignment) {
+            if (existingAssignment.is_active) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Course is already assigned to this company'
+                });
+            } else {
+                // Reactivate existing assignment
+                await existingAssignment.update({ is_active: true });
+                return res.json({
+                    success: true,
+                    message: 'Course assignment reactivated'
+                });
+            }
+        }
+
+        // Create new assignment
+        await CompanyCourseAssignment.create({
+            company_id: companyId,
+            course_id: courseId,
+            assigned_by: req.user?.id === 'super_admin' ? null : (req.user?.id || null),
+            assigned_at: new Date(),
+            is_active: true
+        });
+
+        // Log assignment
+        await auditLogger.log({
+            userId: req.user?.id === 'super_admin' ? null : (req.user?.id || null),
+            companyId: companyId,
+            action: 'course_assigned',
+            entityType: 'course',
+            entityId: courseId,
+            newValues: { courseId, companyId },
+            severity: 'medium',
+            description: `Assigned course "${course.title}" to company`,
+            req
+        });
+
+        res.json({
+            success: true,
+            message: 'Course assigned successfully'
+        });
+    } catch (error) {
+        console.error('Error assigning course to company:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error assigning course to company'
+        });
+    }
+};
+
+const unassignCourseFromCompany = async (req, res) => {
+    try {
+        const { companyId, courseId } = req.params;
+
+        const assignment = await CompanyCourseAssignment.findOne({
+            where: { 
+                company_id: companyId,
+                course_id: courseId 
+            }
+        });
+
+        if (!assignment) {
+            return res.status(404).json({
+                success: false,
+                message: 'Course assignment not found'
+            });
+        }
+
+        // Deactivate assignment instead of deleting
+        await assignment.update({ is_active: false });
+
+        // Log unassignment
+        await auditLogger.log({
+            userId: req.user?.id === 'super_admin' ? null : (req.user?.id || null),
+            companyId: companyId,
+            action: 'course_unassigned',
+            entityType: 'course',
+            entityId: courseId,
+            oldValues: { courseId, companyId },
+            severity: 'medium',
+            description: `Unassigned course from company`,
+            req
+        });
+
+        res.json({
+            success: true,
+            message: 'Course unassigned successfully'
+        });
+    } catch (error) {
+        console.error('Error unassigning course from company:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error unassigning course from company'
+        });
+    }
+};
+
+// Certificate Management
+const getCertificateSettings = async (req, res) => {
+    try {
+        const { courseId } = req.params;
+        
+        const course = await Course.findByPk(courseId);
+        if (!course) {
+            return res.status(404).json({
+                success: false,
+                message: 'Course not found'
+            });
+        }
+
+        // Default certificate settings
+        const defaultSettings = {
+            enabled: false,
+            title: "Certificate of Completion",
+            subtitle: "This certifies that",
+            completionText: "has successfully completed the course",
+            courseName: course.title,
+            issuerName: "E-Learning Platform",
+            issuerTitle: "Course Administrator",
+            validityPeriod: 365,
+            passingScore: 80,
+            requireQuiz: false,
+            requireAllLessons: true,
+            design: {
+                template: "modern",
+                backgroundColor: "#ffffff",
+                primaryColor: "#3b82f6",
+                secondaryColor: "#1e40af",
+                textColor: "#1f2937",
+                fontFamily: "Inter",
+                borderStyle: "solid",
+                borderColor: "#e5e7eb",
+                logoUrl: "",
+                backgroundImage: "",
+                watermark: "",
+            },
+            layout: {
+                orientation: "landscape",
+                width: 800,
+                height: 600,
+                margin: 40,
+                padding: 60,
+            },
+            text: {
+                titleSize: 32,
+                subtitleSize: 18,
+                bodySize: 14,
+                recipientSize: 24,
+                courseSize: 20,
+                dateSize: 12,
+                issuerSize: 14,
+            },
+        };
+
+        // Get existing settings from course
+        const settings = course.certificate_settings ? 
+            { ...defaultSettings, ...JSON.parse(course.certificate_settings) } : 
+            defaultSettings;
+
+        res.json({
+            success: true,
+            settings
+        });
+    } catch (error) {
+        console.error('Error getting certificate settings:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error getting certificate settings'
+        });
+    }
+};
+
+const updateCertificateSettings = async (req, res) => {
+    try {
+        const { courseId } = req.params;
+        const settings = req.body;
+
+        const course = await Course.findByPk(courseId);
+        if (!course) {
+            return res.status(404).json({
+                success: false,
+                message: 'Course not found'
+            });
+        }
+
+        // Update course with certificate settings
+        await course.update({
+            certificate_settings: JSON.stringify(settings)
+        });
+
+        // Log certificate settings update
+        await auditLogger.log({
+            userId: req.user?.id === 'super_admin' ? null : (req.user?.id || 1),
+            companyId: course.company_id,
+            action: 'certificate_settings_updated',
+            entityType: 'course',
+            entityId: course.id,
+            newValues: { certificate_settings: settings },
+            severity: 'medium',
+            description: `Updated certificate settings for course: ${course.title}`,
+            req
+        });
+
+        res.json({
+            success: true,
+            message: 'Certificate settings updated successfully'
+        });
+    } catch (error) {
+        console.error('Error updating certificate settings:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error updating certificate settings'
+        });
+    }
+};
+
+const getCourseCertificates = async (req, res) => {
+    try {
+        const { courseId } = req.params;
+        const { page = 1, limit = 10 } = req.query;
+
+        const certificates = await Certificate.findAndCountAll({
+            where: { course_id: courseId },
+            limit: parseInt(limit),
+            offset: (parseInt(page) - 1) * parseInt(limit),
+            order: [['created_at', 'DESC']],
+            include: [
+                {
+                    model: User,
+                    as: 'user',
+                    attributes: ['id', 'name', 'email']
+                }
+            ]
+        });
+
+        res.json({
+            success: true,
+            certificates: certificates.rows,
+            total: certificates.count,
+            page: parseInt(page),
+            limit: parseInt(limit)
+        });
+    } catch (error) {
+        console.error('Error getting course certificates:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error getting course certificates'
+        });
+    }
+};
+
+const generateCertificate = async (req, res) => {
+    try {
+        const { courseId } = req.params;
+        const { userId, settings } = req.body;
+
+        // Check if course exists
+        const course = await Course.findByPk(courseId);
+        if (!course) {
+            return res.status(404).json({
+                success: false,
+                message: 'Course not found'
+            });
+        }
+
+        // Check if user exists
+        const user = await User.findByPk(userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // Check if certificate already exists
+        const existingCertificate = await Certificate.findOne({
+            where: { course_id: courseId, user_id: userId }
+        });
+
+        if (existingCertificate) {
+            return res.status(400).json({
+                success: false,
+                message: 'Certificate already exists for this user'
+            });
+        }
+
+        // Generate verification code
+        const verificationCode = `CERT-${courseId}-${userId}-${Date.now()}`;
+
+        // Create certificate
+        const certificate = await Certificate.create({
+            course_id: courseId,
+            user_id: userId,
+            verification_code: verificationCode,
+            issued_at: new Date(),
+            valid_until: new Date(Date.now() + (settings.validityPeriod * 24 * 60 * 60 * 1000)),
+            status: 'active',
+            settings: JSON.stringify(settings)
+        });
+
+        // Log certificate generation
+        await auditLogger.log({
+            userId: req.user?.id === 'super_admin' ? null : (req.user?.id || 1),
+            companyId: course.company_id,
+            action: 'certificate_generated',
+            entityType: 'certificate',
+            entityId: certificate.id,
+            newValues: { 
+                course_id: courseId, 
+                user_id: userId,
+                verification_code: verificationCode 
+            },
+            severity: 'medium',
+            description: `Generated certificate for user ${user.name} in course ${course.title}`,
+            req
+        });
+
+        res.json({
+            success: true,
+            message: 'Certificate generated successfully',
+            certificate
+        });
+    } catch (error) {
+        console.error('Error generating certificate:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error generating certificate'
+        });
+    }
+};
+
+const downloadCertificate = async (req, res) => {
+    try {
+        const { certificateId } = req.params;
+
+        const certificate = await Certificate.findByPk(certificateId, {
+            include: [
+                {
+                    model: Course,
+                    as: 'course',
+                    attributes: ['id', 'title']
+                },
+                {
+                    model: User,
+                    as: 'user',
+                    attributes: ['id', 'name', 'email']
+                }
+            ]
+        });
+
+        if (!certificate) {
+            return res.status(404).json({
+                success: false,
+                message: 'Certificate not found'
+            });
+        }
+
+        // For now, return a simple response
+        // In a real implementation, you would generate a PDF here
+        res.json({
+            success: true,
+            message: 'Certificate download would be implemented here',
+            certificate: {
+                id: certificate.id,
+                verification_code: certificate.verification_code,
+                course_title: certificate.course.title,
+                user_name: certificate.user.name,
+                issued_at: certificate.issued_at
+            }
+        });
+    } catch (error) {
+        console.error('Error downloading certificate:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error downloading certificate'
+        });
+    }
+};
+
 module.exports = {
     getCompanies,
     createCompany,
@@ -2143,6 +2814,7 @@ module.exports = {
     createCourse,
     updateCourse,
     deleteCourse,
+    duplicateCourse,
     // Module Management
     getCourseModules,
     createModule,
@@ -2152,5 +2824,16 @@ module.exports = {
     getModuleLessons,
     createLesson,
     updateLesson,
-    deleteLesson
+    deleteLesson,
+    // Company Course Assignment Management
+    getCompanyCourses,
+    getAvailableGlobalCourses,
+    assignCourseToCompany,
+    unassignCourseFromCompany,
+    // Certificate Management
+    getCertificateSettings,
+    updateCertificateSettings,
+    getCourseCertificates,
+    generateCertificate,
+    downloadCertificate
 };

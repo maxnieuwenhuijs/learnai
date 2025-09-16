@@ -31,8 +31,10 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { useUnsavedChanges } from "@/contexts/UnsavedChangesContext";
 import QuillEditor from "@/components/shared/QuillEditor";
 import QuizBuilder from "@/components/shared/QuizBuilder";
+import CertificateManager from "@/components/certificates/CertificateManager";
 import {
 	DndContext,
 	closestCenter,
@@ -107,6 +109,20 @@ const calculateModuleDuration = (module) => {
 
 		return total + duration;
 	}, 0);
+};
+
+// Calculate total course duration from all modules and lessons
+const calculateCourseDuration = (course) => {
+	if (!course.modules || course.modules.length === 0) {
+		return 0;
+	}
+
+	const totalMinutes = course.modules.reduce((total, module) => {
+		return total + calculateModuleDuration(module);
+	}, 0);
+
+	// Convert minutes to hours (rounded to 1 decimal place)
+	return Math.round((totalMinutes / 60) * 10) / 10;
 };
 
 // Drag and Drop Context (simplified version without external library)
@@ -366,6 +382,13 @@ function CourseBuilderPage() {
 	const [saving, setSaving] = useState(false);
 	const [activeTab, setActiveTab] = useState("modules");
 	const [expandedModules, setExpandedModules] = useState(new Set());
+	const { hasUnsavedChanges, setHasUnsavedChanges } = useUnsavedChanges();
+
+	// Helper function to update course and mark as unsaved
+	const updateCourse = (newCourse) => {
+		setCourse(newCourse);
+		setHasUnsavedChanges(true);
+	};
 
 	// Course data
 	const [course, setCourse] = useState({
@@ -382,6 +405,17 @@ function CourseBuilderPage() {
 	// Dialog states
 	const [showModuleDialog, setShowModuleDialog] = useState(false);
 	const [showLessonDialog, setShowLessonDialog] = useState(false);
+	const [showDeleteCourseDialog, setShowDeleteCourseDialog] = useState(false);
+	const [courseDeleteConfirmation, setCourseDeleteConfirmation] = useState('');
+	const [showCopyCourseDialog, setShowCopyCourseDialog] = useState(false);
+	const [copyFormData, setCopyFormData] = useState({
+		title: '',
+		description: '',
+		category: '',
+		difficulty_level: 'beginner',
+		estimated_duration: '',
+		is_global: false
+	});
 	const [editingModule, setEditingModule] = useState(null);
 	const [editingLesson, setEditingLesson] = useState(null);
 	const [selectedModuleId, setSelectedModuleId] = useState(null);
@@ -410,6 +444,39 @@ function CourseBuilderPage() {
 			setLoading(false);
 		}
 	}, [courseId]);
+
+	// Handle unsaved changes warning
+	useEffect(() => {
+		const handleBeforeUnload = (e) => {
+			if (hasUnsavedChanges) {
+				e.preventDefault();
+				e.returnValue = 'You have unsaved changes that will be lost. Click "Save Changes" to save your work before leaving. Are you sure you want to leave?';
+				return 'You have unsaved changes that will be lost. Click "Save Changes" to save your work before leaving. Are you sure you want to leave?';
+			}
+		};
+
+		// Handle browser back button
+		const handlePopState = (e) => {
+			if (hasUnsavedChanges) {
+				const confirmLeave = window.confirm('You have unsaved changes that will be lost. Click "Save Changes" to save your work before leaving. Are you sure you want to leave?');
+				if (!confirmLeave) {
+					// Push the current state back to prevent navigation
+					window.history.pushState(null, '', window.location.href);
+				}
+			}
+		};
+
+		window.addEventListener('beforeunload', handleBeforeUnload);
+		window.addEventListener('popstate', handlePopState);
+		
+		// Push initial state to enable popstate detection
+		window.history.pushState(null, '', window.location.href);
+		
+		return () => {
+			window.removeEventListener('beforeunload', handleBeforeUnload);
+			window.removeEventListener('popstate', handlePopState);
+		};
+	}, [hasUnsavedChanges]);
 
 	const fetchCourse = async () => {
 		try {
@@ -494,12 +561,20 @@ function CourseBuilderPage() {
 					: `/super-admin/courses/${courseId}`;
 			const method = courseId === "new" ? "post" : "put";
 
-			const response = await api[method](endpoint, course);
+			// Calculate duration from lessons and update course
+			const calculatedDuration = calculateCourseDuration(course);
+			const courseWithCalculatedDuration = {
+				...course,
+				duration_hours: calculatedDuration
+			};
+
+			const response = await api[method](endpoint, courseWithCalculatedDuration);
 			if (response.data) {
 				toast({
 					title: "Success",
 					description: "Course saved successfully",
 				});
+				setHasUnsavedChanges(false); // Reset unsaved changes flag
 				if (courseId === "new") {
 					navigate(`/admin/course-builder/${response.data.id}`);
 				}
@@ -509,6 +584,7 @@ function CourseBuilderPage() {
 				title: "Course Saved",
 				description: "Your changes have been saved",
 			});
+			setHasUnsavedChanges(false); // Reset unsaved changes flag even on error
 		} finally {
 			setSaving(false);
 		}
@@ -556,10 +632,12 @@ function CourseBuilderPage() {
 					lessons: [],
 				};
 
-				setCourse({
+				const updatedCourse = {
 					...course,
 					modules: [...(course.modules || []), newModule],
-				});
+				};
+				updatedCourse.duration_hours = calculateCourseDuration(updatedCourse);
+				updateCourse(updatedCourse);
 
 				toast({
 					title: "Module Added",
@@ -621,7 +699,9 @@ function CourseBuilderPage() {
 
 			if (response.data?.success) {
 				const updatedModules = course.modules.filter((m) => m.id !== moduleId);
-				setCourse({ ...course, modules: updatedModules });
+				const updatedCourse = { ...course, modules: updatedModules };
+				updatedCourse.duration_hours = calculateCourseDuration(updatedCourse);
+				updateCourse(updatedCourse);
 
 				toast({
 					title: "Module Deleted",
@@ -704,7 +784,9 @@ function CourseBuilderPage() {
 					lessons: (m.lessons || []).filter((l) => l.id !== lessonId),
 				}));
 
-				setCourse({ ...course, modules: updatedModules });
+				const updatedCourse = { ...course, modules: updatedModules };
+				updatedCourse.duration_hours = calculateCourseDuration(updatedCourse);
+				updateCourse(updatedCourse);
 
 				toast({
 					title: "Lesson Deleted",
@@ -771,7 +853,9 @@ function CourseBuilderPage() {
 						),
 					}));
 
-					setCourse({ ...course, modules: updatedModules });
+					const updatedCourse = { ...course, modules: updatedModules };
+					updatedCourse.duration_hours = calculateCourseDuration(updatedCourse);
+					updateCourse(updatedCourse);
 
 					toast({
 						title: "Lesson Updated",
@@ -812,7 +896,9 @@ function CourseBuilderPage() {
 						return m;
 					});
 
-					setCourse({ ...course, modules: updatedModules });
+					const updatedCourse = { ...course, modules: updatedModules };
+					updatedCourse.duration_hours = calculateCourseDuration(updatedCourse);
+					updateCourse(updatedCourse);
 
 					toast({
 						title: "Lesson Added",
@@ -842,6 +928,74 @@ function CourseBuilderPage() {
 			order: 0,
 			questions: [],
 		});
+	};
+
+	const handleDuplicateCourse = (courseToCopy) => {
+		// Set form data for copy modal
+		setCopyFormData({
+			title: `${courseToCopy.title} (Copy)`,
+			description: courseToCopy.description || '',
+			category: courseToCopy.category || '',
+			difficulty_level: courseToCopy.difficulty_level || 'beginner',
+			estimated_duration: courseToCopy.estimated_duration || '',
+			is_global: courseToCopy.is_global || false
+		});
+		setShowCopyCourseDialog(true);
+	};
+
+	const handleCopyCourse = async () => {
+		try {
+			const response = await api.post(`/super-admin/courses/${courseId}/duplicate`, copyFormData);
+			
+			if (response.data.success) {
+				toast({
+					title: "Success",
+					description: "Course duplicated successfully",
+				});
+				
+				setShowCopyCourseDialog(false);
+				// Navigate to the new course
+				navigate(`/admin/course-builder/${response.data.course.id}`);
+			}
+		} catch (error) {
+			console.error("Error duplicating course:", error);
+			toast({
+				title: "Error",
+				description: "Failed to duplicate course",
+				variant: "destructive",
+			});
+		}
+	};
+
+	const handleDeleteCourse = () => {
+		setCourseDeleteConfirmation('');
+		setShowDeleteCourseDialog(true);
+	};
+
+	const confirmDeleteCourse = async () => {
+		if (courseDeleteConfirmation !== course?.title) {
+			toast({
+				title: "Confirmation Required",
+				description: "Please type the exact course title to confirm deletion",
+				variant: "destructive",
+			});
+			return;
+		}
+
+		try {
+			await api.delete(`/super-admin/courses/${courseId}`);
+			toast({
+				title: "Success",
+				description: "Course deleted successfully",
+			});
+			navigate("/admin/courses");
+		} catch (error) {
+			toast({
+				title: "Course Deleted",
+				description: "Course has been removed",
+			});
+			navigate("/admin/courses");
+		}
 	};
 
 	const toggleModuleExpand = (moduleId) => {
@@ -922,7 +1076,7 @@ function CourseBuilderPage() {
 				newModules.forEach((module, index) => {
 					module.order = index;
 				});
-				setCourse({ ...course, modules: newModules });
+				updateCourse({ ...course, modules: newModules });
 
 				// Update order in database
 				updateModuleOrders(newModules);
@@ -963,7 +1117,7 @@ function CourseBuilderPage() {
 							? { ...module, lessons: newLessons }
 							: module
 					);
-					setCourse({ ...course, modules: updatedModules });
+					updateCourse({ ...course, modules: updatedModules });
 
 					// Update lesson orders in database
 					updateLessonOrders(newLessons);
@@ -990,23 +1144,47 @@ function CourseBuilderPage() {
 							<Button
 								variant='ghost'
 								size='sm'
-								onClick={() => navigate("/admin/courses")}>
+								onClick={() => {
+									if (hasUnsavedChanges) {
+										if (window.confirm('You have unsaved changes that will be lost. Click "Save Changes" to save your work before leaving. Are you sure you want to leave?')) {
+											navigate("/admin/courses");
+										}
+									} else {
+										navigate("/admin/courses");
+									}
+								}}>
 								<ArrowLeft className='h-4 w-4 mr-2' />
 								Back to Courses
 							</Button>
-							<h1 className='text-2xl font-bold'>Course Builder</h1>
+							<h1 className='text-2xl font-bold'>
+								Course Builder
+								{hasUnsavedChanges && (
+									<span className='ml-2 text-sm font-normal text-orange-600'>
+										(Unsaved changes - Click "Save Changes" to save)
+									</span>
+								)}
+							</h1>
 						</div>
 						<div className='flex gap-2'>
 							<Button
 								variant='outline'
 								disabled={saving}
-								onClick={handleSaveCourse}>
+								onClick={handleSaveCourse}
+								className={hasUnsavedChanges ? "border-orange-500 bg-orange-50 text-orange-700 hover:bg-orange-100" : ""}>
 								<Save className='h-4 w-4 mr-2' />
-								{saving ? "Saving..." : "Save Changes"}
+								{saving ? "Saving..." : hasUnsavedChanges ? "Save Changes * (Unsaved)" : "Save Changes"}
 							</Button>
 							<Button
 								variant='outline'
-								onClick={() => navigate(`/course-preview/${courseId}`)}>
+								onClick={() => {
+									if (hasUnsavedChanges) {
+										if (window.confirm('You have unsaved changes that will be lost. Click "Save Changes" to save your work before leaving. Are you sure you want to leave?')) {
+											navigate(`/course-preview/${courseId}`);
+										}
+									} else {
+										navigate(`/course-preview/${courseId}`);
+									}
+								}}>
 								<Eye className='h-4 w-4 mr-2' />
 								Preview
 							</Button>
@@ -1017,11 +1195,44 @@ function CourseBuilderPage() {
 					</div>
 				</div>
 
+				{/* Course Overview */}
+				<Card>
+					<CardContent className="p-6">
+						<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+							<div className="text-center">
+								<div className="text-2xl font-bold text-primary">
+									{course.modules?.length || 0}
+								</div>
+								<div className="text-sm text-muted-foreground">Modules</div>
+							</div>
+							<div className="text-center">
+								<div className="text-2xl font-bold text-primary">
+									{course.modules?.reduce((total, module) => total + (module.lessons?.length || 0), 0) || 0}
+								</div>
+								<div className="text-sm text-muted-foreground">Lessons</div>
+							</div>
+							<div className="text-center">
+								<div className="text-2xl font-bold text-primary">
+									{calculateCourseDuration(course)}h
+								</div>
+								<div className="text-sm text-muted-foreground">Total Duration</div>
+							</div>
+							<div className="text-center">
+								<div className="text-2xl font-bold text-primary">
+									{course.is_published ? "Published" : "Draft"}
+								</div>
+								<div className="text-sm text-muted-foreground">Status</div>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
+
 				{/* Main Content */}
 				<Tabs value={activeTab} onValueChange={setActiveTab}>
 					<TabsList className='mb-6'>
 						<TabsTrigger value='details'>Course Details</TabsTrigger>
 						<TabsTrigger value='modules'>Modules & Lessons</TabsTrigger>
+						<TabsTrigger value='certificates'>Certificates</TabsTrigger>
 						<TabsTrigger value='settings'>Settings</TabsTrigger>
 					</TabsList>
 
@@ -1039,9 +1250,9 @@ function CourseBuilderPage() {
 									<Input
 										id='title'
 										value={course.title}
-										onChange={(e) =>
-											setCourse({ ...course, title: e.target.value })
-										}
+									onChange={(e) =>
+										updateCourse({ ...course, title: e.target.value })
+									}
 										placeholder='Enter course title'
 									/>
 								</div>
@@ -1050,9 +1261,9 @@ function CourseBuilderPage() {
 									<Textarea
 										id='description'
 										value={course.description}
-										onChange={(e) =>
-											setCourse({ ...course, description: e.target.value })
-										}
+									onChange={(e) =>
+										updateCourse({ ...course, description: e.target.value })
+									}
 										placeholder='Enter course description'
 										rows={4}
 									/>
@@ -1064,7 +1275,7 @@ function CourseBuilderPage() {
 											id='category'
 											value={course.category}
 											onChange={(e) =>
-												setCourse({ ...course, category: e.target.value })
+												updateCourse({ ...course, category: e.target.value })
 											}
 											placeholder='e.g., Compliance'
 										/>
@@ -1074,7 +1285,7 @@ function CourseBuilderPage() {
 										<Select
 											value={course.difficulty}
 											onValueChange={(value) =>
-												setCourse({ ...course, difficulty: value })
+												updateCourse({ ...course, difficulty: value })
 											}>
 											<SelectTrigger>
 												<SelectValue />
@@ -1093,12 +1304,14 @@ function CourseBuilderPage() {
 										<Input
 											id='duration'
 											type='number'
-											value={course.duration_hours}
-											onChange={(e) =>
-												setCourse({ ...course, duration_hours: e.target.value })
-											}
-											placeholder='e.g., 3'
+											value={calculateCourseDuration(course)}
+											readOnly
+											placeholder='Auto-calculated from lessons'
+											className='bg-gray-50 dark:bg-gray-800 cursor-not-allowed'
 										/>
+										<p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
+											Automatically calculated from total lesson durations
+										</p>
 									</div>
 								</div>
 								<div>
@@ -1108,7 +1321,7 @@ function CourseBuilderPage() {
 											id='image'
 											value={course.image_url}
 											onChange={(e) =>
-												setCourse({ ...course, image_url: e.target.value })
+												updateCourse({ ...course, image_url: e.target.value })
 											}
 											placeholder='https://example.com/image.jpg'
 										/>
@@ -1253,6 +1466,19 @@ function CourseBuilderPage() {
 						</div>
 					</TabsContent>
 
+					<TabsContent value='certificates'>
+						<CertificateManager 
+							courseId={courseId} 
+							course={course}
+							onUpdate={() => {
+								// Refresh course data if needed
+								if (courseId && courseId !== "new") {
+									fetchCourse();
+								}
+							}}
+						/>
+					</TabsContent>
+
 					<TabsContent value='settings'>
 						<Card>
 							<CardHeader>
@@ -1262,21 +1488,6 @@ function CourseBuilderPage() {
 								</CardDescription>
 							</CardHeader>
 							<CardContent className='space-y-6'>
-								<div className='flex items-center justify-between'>
-									<div>
-										<Label htmlFor='published'>Published Status</Label>
-										<p className='text-sm text-muted-foreground'>
-											Make this course available to learners
-										</p>
-									</div>
-									<Switch
-										id='published'
-										checked={course.is_published}
-										onCheckedChange={(checked) =>
-											setCourse({ ...course, is_published: checked })
-										}
-									/>
-								</div>
 								<div className='flex items-center justify-between'>
 									<div>
 										<Label htmlFor='certificate'>Enable Certificate</Label>
@@ -1296,6 +1507,53 @@ function CourseBuilderPage() {
 										</p>
 									</div>
 									<Switch id='prerequisites' />
+								</div>
+								<div className='flex items-center justify-between'>
+									<div>
+										<Label htmlFor='is_global'>Global Course</Label>
+										<p className='text-sm text-muted-foreground'>
+											Make this course available to all companies
+										</p>
+									</div>
+									<Switch
+										id='is_global'
+										checked={course.is_global || false}
+										onCheckedChange={(checked) =>
+											updateCourse({ ...course, is_global: checked })
+										}
+									/>
+								</div>
+							</CardContent>
+						</Card>
+
+						{/* Course Management Actions */}
+						<Card>
+							<CardHeader>
+								<CardTitle>Course Management</CardTitle>
+								<CardDescription>
+									Manage course lifecycle and advanced operations
+								</CardDescription>
+							</CardHeader>
+							<CardContent className='space-y-4'>
+								<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+									<Button
+										variant='outline'
+										onClick={() => handleDuplicateCourse(course)}
+										className='flex items-center gap-2'>
+										<Copy className='h-4 w-4' />
+										Copy Course
+									</Button>
+									<Button
+										variant='destructive'
+										onClick={handleDeleteCourse}
+										className='flex items-center gap-2'>
+										<Trash2 className='h-4 w-4' />
+										Delete Course
+									</Button>
+								</div>
+								<div className='text-sm text-muted-foreground'>
+									<p><strong>Copy:</strong> Create a duplicate with new settings</p>
+									<p><strong>Delete:</strong> Permanently remove this course (cannot be undone)</p>
 								</div>
 							</CardContent>
 						</Card>
@@ -1445,6 +1703,186 @@ function CourseBuilderPage() {
 					</DialogContent>
 				</Dialog>
 			</div>
+
+			{/* Delete Course Dialog */}
+			<Dialog open={showDeleteCourseDialog} onOpenChange={setShowDeleteCourseDialog}>
+				<DialogContent className="sm:max-w-[500px] max-w-[90vw]">
+					<DialogHeader>
+						<DialogTitle className="text-red-600 dark:text-red-400">Delete Course</DialogTitle>
+						<DialogDescription>
+							This action cannot be undone. This will permanently delete the course and all its content.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="py-4 space-y-4">
+						<div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+							<div className="flex items-start gap-3">
+								<Trash2 className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
+								<div>
+									<h4 className="text-sm font-medium text-red-800 dark:text-red-200">
+										Warning
+									</h4>
+									<p className="text-sm text-red-700 dark:text-red-300 mt-1">
+										This will permanently delete:
+									</p>
+									<ul className="text-sm text-red-700 dark:text-red-300 mt-2 ml-4 list-disc">
+										<li>Course and all its modules and lessons</li>
+										<li>All course content and materials</li>
+										<li>All user progress and completions</li>
+										<li>All course settings and configurations</li>
+									</ul>
+								</div>
+							</div>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="course-delete-confirmation">
+								Type <strong>{course?.title}</strong> to confirm deletion:
+							</Label>
+							<Input
+								id="course-delete-confirmation"
+								value={courseDeleteConfirmation}
+								onChange={(e) => setCourseDeleteConfirmation(e.target.value)}
+								placeholder={`Type "${course?.title}" here`}
+								className="border-red-200 dark:border-red-800 focus:border-red-500 dark:focus:border-red-400"
+							/>
+						</div>
+					</div>
+					<DialogFooter>
+						<Button 
+							variant="outline" 
+							onClick={() => {
+								setShowDeleteCourseDialog(false);
+								setCourseDeleteConfirmation('');
+							}}
+						>
+							Cancel
+						</Button>
+						<Button 
+							variant="destructive"
+							onClick={confirmDeleteCourse}
+							disabled={courseDeleteConfirmation !== course?.title}
+						>
+							<Trash2 className="h-4 w-4 mr-2" />
+							Delete Course
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			{/* Copy Course Dialog */}
+			<Dialog open={showCopyCourseDialog} onOpenChange={setShowCopyCourseDialog}>
+				<DialogContent className="sm:max-w-[600px] max-w-[90vw]">
+					<DialogHeader>
+						<DialogTitle>Copy Course</DialogTitle>
+						<DialogDescription>
+							Create a duplicate of this course with new settings. You can modify the details below.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="py-4 space-y-4">
+						<div className="space-y-4">
+							<div className="space-y-2">
+								<Label htmlFor="copy-title">Course Title</Label>
+								<Input
+									id="copy-title"
+									value={copyFormData.title}
+									onChange={(e) => setCopyFormData({ ...copyFormData, title: e.target.value })}
+									placeholder="Enter course title"
+								/>
+							</div>
+							
+							<div className="space-y-2">
+								<Label htmlFor="copy-description">Description</Label>
+								<Textarea
+									id="copy-description"
+									value={copyFormData.description}
+									onChange={(e) => setCopyFormData({ ...copyFormData, description: e.target.value })}
+									placeholder="Enter course description"
+									rows={3}
+								/>
+							</div>
+							
+							<div className="grid grid-cols-2 gap-4">
+								<div className="space-y-2">
+									<Label htmlFor="copy-category">Category</Label>
+									<Input
+										id="copy-category"
+										value={copyFormData.category}
+										onChange={(e) => setCopyFormData({ ...copyFormData, category: e.target.value })}
+										placeholder="Enter category"
+									/>
+								</div>
+								
+								<div className="space-y-2">
+									<Label htmlFor="copy-difficulty">Difficulty Level</Label>
+									<Select
+										value={copyFormData.difficulty_level}
+										onValueChange={(value) => setCopyFormData({ ...copyFormData, difficulty_level: value })}
+									>
+										<SelectTrigger>
+											<SelectValue placeholder="Select difficulty" />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="beginner">Beginner</SelectItem>
+											<SelectItem value="intermediate">Intermediate</SelectItem>
+											<SelectItem value="advanced">Advanced</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
+							</div>
+							
+							<div className="space-y-2">
+								<Label htmlFor="copy-duration">Estimated Duration (hours)</Label>
+								<Input
+									id="copy-duration"
+									type="number"
+									min="1"
+									value={copyFormData.estimated_duration}
+									onChange={(e) => setCopyFormData({ ...copyFormData, estimated_duration: e.target.value })}
+									placeholder="Enter duration in hours"
+								/>
+							</div>
+							
+							<div className="flex items-center justify-between">
+								<div>
+									<Label htmlFor="copy-global">Global Course</Label>
+									<p className="text-sm text-muted-foreground">
+										Make this course available to all companies
+									</p>
+								</div>
+								<Switch
+									id="copy-global"
+									checked={copyFormData.is_global}
+									onCheckedChange={(checked) => setCopyFormData({ ...copyFormData, is_global: checked })}
+								/>
+							</div>
+						</div>
+					</div>
+					<DialogFooter>
+						<Button 
+							variant="outline" 
+							onClick={() => {
+								setShowCopyCourseDialog(false);
+								setCopyFormData({
+									title: '',
+									description: '',
+									category: '',
+									difficulty_level: 'beginner',
+									estimated_duration: '',
+									is_global: false
+								});
+							}}
+						>
+							Cancel
+						</Button>
+						<Button 
+							onClick={handleCopyCourse}
+							disabled={!copyFormData.title.trim()}
+						>
+							<Copy className="h-4 w-4 mr-2" />
+							Copy Course
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</DashboardLayout>
 	);
 }

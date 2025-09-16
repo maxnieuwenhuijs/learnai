@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
 	Select,
 	SelectContent,
@@ -66,13 +67,24 @@ function AdminCoursesPage() {
 	const [totalPages, setTotalPages] = useState(1);
 	const [showCreateDialog, setShowCreateDialog] = useState(false);
 	const [showEditDialog, setShowEditDialog] = useState(false);
+	const [showCopyDialog, setShowCopyDialog] = useState(false);
 	const [selectedCourse, setSelectedCourse] = useState(null);
+	const [courseToCopy, setCourseToCopy] = useState(null);
 	const [formData, setFormData] = useState({
 		title: "",
 		description: "",
-		company_id: 10, // Default to company 10 for now
+		company_id: null, // Will be set based on is_global
 		difficulty_level: "beginner",
 		estimated_duration: 60,
+		is_global: false,
+	});
+	const [copyFormData, setCopyFormData] = useState({
+		title: "",
+		description: "",
+		category: "",
+		difficulty_level: "beginner",
+		estimated_duration: 60,
+		is_global: false,
 	});
 
 	useEffect(() => {
@@ -106,13 +118,36 @@ function AdminCoursesPage() {
 
 	const handleCreateCourse = async () => {
 		try {
-			const response = await api.post("/super-admin/courses", formData);
+			// Prepare course data
+			const courseData = {
+				title: formData.title,
+				description: formData.description,
+				difficulty_level: formData.difficulty_level,
+				estimated_duration: formData.estimated_duration,
+				is_global: formData.is_global
+			};
+
+			// Only add company_id if it's not a global course
+			if (!formData.is_global && formData.company_id) {
+				courseData.company_id = formData.company_id;
+			}
+
+			const response = await api.post("/super-admin/courses", courseData);
 			if (response.data) {
 				toast({
 					title: "Success",
 					description: "Course created successfully",
 				});
 				setShowCreateDialog(false);
+				// Reset form
+				setFormData({
+					title: "",
+					description: "",
+					company_id: null,
+					difficulty_level: "beginner",
+					estimated_duration: 60,
+					is_global: false,
+				});
 				fetchCourses();
 				navigate(`/admin/course-builder/${response.data.course.id}`);
 			}
@@ -123,6 +158,15 @@ function AdminCoursesPage() {
 				description: "Navigating to course builder...",
 			});
 			setShowCreateDialog(false);
+			// Reset form
+			setFormData({
+				title: "",
+				description: "",
+				company_id: null,
+				difficulty_level: "beginner",
+				estimated_duration: 60,
+				is_global: false,
+			});
 			navigate("/admin/course-builder/new");
 		}
 	};
@@ -199,21 +243,37 @@ function AdminCoursesPage() {
 		}
 	};
 
-	const handleDuplicateCourse = async (courseId) => {
+	const handleDuplicateCourse = (course) => {
+		setCourseToCopy(course);
+		setCopyFormData({
+			title: `${course.title} (Copy)`,
+			description: course.description,
+			category: course.category || "",
+			difficulty_level: course.difficulty || "beginner",
+			estimated_duration: (course.duration_hours || 1) * 60,
+			is_global: course.is_global || false,
+		});
+		setShowCopyDialog(true);
+	};
+
+	const handleCopyCourse = async () => {
 		try {
 			const response = await api.post(
-				`/super-admin/courses/${courseId}/duplicate`
+				`/super-admin/courses/${courseToCopy.id}/duplicate`,
+				copyFormData
 			);
 			toast({
 				title: "Success",
-				description: "Course duplicated successfully",
+				description: "Course copied successfully",
 			});
+			setShowCopyDialog(false);
 			fetchCourses();
 		} catch (error) {
 			toast({
-				title: "Course Duplicated",
+				title: "Course Copied",
 				description: "A copy of the course has been created",
 			});
+			setShowCopyDialog(false);
 			fetchCourses();
 		}
 	};
@@ -235,6 +295,19 @@ function AdminCoursesPage() {
 		return isPublished
 			? "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
 			: "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300";
+	};
+
+	// Calculate lesson count from course modules
+	const getLessonCount = (course) => {
+		if (course.lesson_count !== undefined) {
+			return course.lesson_count;
+		}
+		if (course.modules && Array.isArray(course.modules)) {
+			return course.modules.reduce((total, module) => {
+				return total + (module.lessons ? module.lessons.length : 0);
+			}, 0);
+		}
+		return 0;
 	};
 
 	return (
@@ -448,11 +521,37 @@ function AdminCoursesPage() {
 												placeholder='e.g., 3'
 											/>
 										</div>
+										<div className='flex items-center justify-between'>
+											<div>
+												<Label htmlFor='is_global'>Global Course</Label>
+												<p className='text-sm text-muted-foreground'>
+													Make this course available to all companies
+												</p>
+											</div>
+											<Switch
+												id='is_global'
+												checked={formData.is_global}
+												onCheckedChange={(checked) =>
+													setFormData({ ...formData, is_global: checked })
+												}
+											/>
+										</div>
 									</div>
 									<DialogFooter>
 										<Button
 											variant='outline'
-											onClick={() => setShowCreateDialog(false)}>
+											onClick={() => {
+												setShowCreateDialog(false);
+												// Reset form
+												setFormData({
+													title: "",
+													description: "",
+													company_id: null,
+													difficulty_level: "beginner",
+													estimated_duration: 60,
+													is_global: false,
+												});
+											}}>
 											Cancel
 										</Button>
 										<Button onClick={handleCreateCourse}>Create Course</Button>
@@ -477,6 +576,7 @@ function AdminCoursesPage() {
 										<TableHead>Course</TableHead>
 										<TableHead>Category</TableHead>
 										<TableHead>Difficulty</TableHead>
+										<TableHead className='text-center'>Global</TableHead>
 										<TableHead className='text-center'>Modules</TableHead>
 										<TableHead className='text-center'>Enrolled</TableHead>
 										<TableHead className='text-center'>Completion</TableHead>
@@ -492,7 +592,7 @@ function AdminCoursesPage() {
 													<div className='font-medium'>{course.title}</div>
 													<div className='text-sm text-muted-foreground'>
 														{course.duration_hours} hours •{" "}
-														{course.lesson_count} lessons
+														{getLessonCount(course)} lessons
 													</div>
 												</div>
 											</TableCell>
@@ -502,6 +602,17 @@ function AdminCoursesPage() {
 													className={getDifficultyColor(course.difficulty)}>
 													{course.difficulty}
 												</Badge>
+											</TableCell>
+											<TableCell className='text-center'>
+												{course.is_global ? (
+													<Badge className='bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'>
+														Global
+													</Badge>
+												) : (
+													<Badge className='bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'>
+														Company
+													</Badge>
+												)}
 											</TableCell>
 											<TableCell className='text-center'>
 												{course.module_count}
@@ -527,7 +638,8 @@ function AdminCoursesPage() {
 														variant='ghost'
 														onClick={() =>
 															navigate(`/admin/course-builder/${course.id}`)
-														}>
+														}
+														title='Edit Course'>
 														<Edit className='h-4 w-4' />
 													</Button>
 													<Button
@@ -538,34 +650,6 @@ function AdminCoursesPage() {
 														}
 														title='Preview Course'>
 														<Eye className='h-4 w-4' />
-													</Button>
-													<Button
-														size='sm'
-														variant='ghost'
-														onClick={() => handleDuplicateCourse(course.id)}>
-														<Copy className='h-4 w-4' />
-													</Button>
-													<Button
-														size='sm'
-														variant='ghost'
-														onClick={() =>
-															handlePublishToggle(
-																course.id,
-																course.is_published
-															)
-														}>
-														{course.is_published ? (
-															<Archive className='h-4 w-4' />
-														) : (
-															<Eye className='h-4 w-4' />
-														)}
-													</Button>
-													<Button
-														size='sm'
-														variant='ghost'
-														className='text-red-600 hover:text-red-700'
-														onClick={() => handleDeleteCourse(course.id)}>
-														<Trash2 className='h-4 w-4' />
 													</Button>
 												</div>
 											</TableCell>
@@ -604,6 +688,136 @@ function AdminCoursesPage() {
 					</div>
 				)}
 			</div>
+
+			{/* Copy Course Dialog */}
+			<Dialog open={showCopyDialog} onOpenChange={setShowCopyDialog}>
+				<DialogContent className='sm:max-w-[700px] max-w-[90vw]'>
+					<DialogHeader>
+						<DialogTitle>Copy Course</DialogTitle>
+						<DialogDescription>
+							Create a copy of "{courseToCopy?.title}" with new settings
+						</DialogDescription>
+					</DialogHeader>
+					<div className='space-y-6 py-4'>
+						<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+							<div className='space-y-2'>
+								<Label htmlFor='copy-title'>Course Title</Label>
+								<Input
+									id='copy-title'
+									value={copyFormData.title}
+									onChange={(e) =>
+										setCopyFormData({
+											...copyFormData,
+											title: e.target.value,
+										})
+									}
+									placeholder='Enter course title'
+								/>
+							</div>
+							<div className='space-y-2'>
+								<Label htmlFor='copy-category'>Category</Label>
+								<Input
+									id='copy-category'
+									value={copyFormData.category}
+									onChange={(e) =>
+										setCopyFormData({
+											...copyFormData,
+											category: e.target.value,
+										})
+									}
+									placeholder='Enter category'
+								/>
+							</div>
+						</div>
+
+						<div className='space-y-2'>
+							<Label htmlFor='copy-description'>Description</Label>
+							<Textarea
+								id='copy-description'
+								value={copyFormData.description}
+								onChange={(e) =>
+									setCopyFormData({
+										...copyFormData,
+										description: e.target.value,
+									})
+								}
+								placeholder='Enter course description'
+								rows={3}
+							/>
+						</div>
+
+						<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+							<div className='space-y-2'>
+								<Label htmlFor='copy-difficulty'>Difficulty Level</Label>
+								<Select
+									value={copyFormData.difficulty_level}
+									onValueChange={(value) =>
+										setCopyFormData({
+											...copyFormData,
+											difficulty_level: value,
+										})
+									}>
+									<SelectTrigger>
+										<SelectValue placeholder='Select difficulty' />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value='beginner'>Beginner</SelectItem>
+										<SelectItem value='intermediate'>Intermediate</SelectItem>
+										<SelectItem value='advanced'>Advanced</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+							<div className='space-y-2'>
+								<Label htmlFor='copy-duration'>Duration (minutes)</Label>
+								<Input
+									id='copy-duration'
+									type='number'
+									value={copyFormData.estimated_duration}
+									onChange={(e) =>
+										setCopyFormData({
+											...copyFormData,
+											estimated_duration: parseInt(e.target.value) || 60,
+										})
+									}
+									placeholder='60'
+								/>
+							</div>
+						</div>
+
+						<div className='flex items-center space-x-2'>
+							<Switch
+								id='copy-global'
+								checked={copyFormData.is_global}
+								onCheckedChange={(checked) =>
+									setCopyFormData({
+										...copyFormData,
+										is_global: checked,
+									})
+								}
+							/>
+							<Label htmlFor='copy-global'>Make this a global course</Label>
+						</div>
+					</div>
+					<DialogFooter>
+						<Button
+							variant='outline'
+							onClick={() => {
+								setShowCopyDialog(false);
+								setCopyFormData({
+									title: "",
+									description: "",
+									category: "",
+									difficulty_level: "beginner",
+									estimated_duration: 60,
+									is_global: false,
+								});
+							}}>
+							Cancel
+						</Button>
+						<Button onClick={handleCopyCourse}>Copy Course</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</DashboardLayout>
 	);
 }

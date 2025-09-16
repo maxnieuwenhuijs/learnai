@@ -15,6 +15,11 @@ const Course = sequelize.define('Course', {
             key: 'id'
         }
     },
+    is_global: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+    },
     title: {
         type: DataTypes.STRING(255),
         allowNull: false
@@ -54,6 +59,10 @@ const Course = sequelize.define('Course', {
             model: 'users',
             key: 'id'
         }
+    },
+    certificate_settings: {
+        type: DataTypes.JSON,
+        allowNull: true
     }
 }, {
     tableName: 'courses',

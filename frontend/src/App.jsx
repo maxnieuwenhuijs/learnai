@@ -6,6 +6,7 @@ import {
 } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { UnsavedChangesProvider } from "@/contexts/UnsavedChangesContext";
 import { ProtectedRoute } from "@/components/shared/ProtectedRoute";
 import { Toaster } from "@/components/ui/toaster";
 import { LoginPage } from "@/pages/LoginPage";
@@ -40,7 +41,8 @@ function App() {
 	return (
 		<ThemeProvider>
 			<AuthProvider>
-				<Router>
+				<UnsavedChangesProvider>
+					<Router>
 					<Routes>
 						{/* Public Routes */}
 						<Route path='/login' element={<LoginPage />} />
@@ -113,7 +115,8 @@ function App() {
 						<Route path='/' element={<Navigate to='/dashboard' replace />} />
 					</Routes>
 					<Toaster />
-				</Router>
+					</Router>
+				</UnsavedChangesProvider>
 			</AuthProvider>
 		</ThemeProvider>
 	);

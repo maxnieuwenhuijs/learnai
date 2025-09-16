@@ -130,6 +130,7 @@ router.get('/courses/:id', superAdminController.getCourse);
 router.post('/courses', createCourseValidation, superAdminController.createCourse);
 router.put('/courses/:id', createCourseValidation, superAdminController.updateCourse);
 router.delete('/courses/:id', superAdminController.deleteCourse);
+router.post('/courses/:id/duplicate', superAdminController.duplicateCourse);
 
 // Module Management Routes
 router.get('/courses/:courseId/modules', superAdminController.getCourseModules);
@@ -142,6 +143,19 @@ router.get('/modules/:moduleId/lessons', superAdminController.getModuleLessons);
 router.post('/modules/:moduleId/lessons', superAdminController.createLesson);
 router.put('/lessons/:id', superAdminController.updateLesson);
 router.delete('/lessons/:id', superAdminController.deleteLesson);
+
+// Company Course Assignment Routes
+router.get('/companies/:companyId/courses', superAdminController.getCompanyCourses);
+router.get('/companies/:companyId/available-courses', superAdminController.getAvailableGlobalCourses);
+router.post('/companies/:companyId/courses', superAdminController.assignCourseToCompany);
+router.delete('/companies/:companyId/courses/:courseId', superAdminController.unassignCourseFromCompany);
+
+// Certificate Management Routes
+router.get('/courses/:courseId/certificate-settings', superAdminController.getCertificateSettings);
+router.put('/courses/:courseId/certificate-settings', superAdminController.updateCertificateSettings);
+router.get('/courses/:courseId/certificates', superAdminController.getCourseCertificates);
+router.post('/courses/:courseId/certificates/generate', superAdminController.generateCertificate);
+router.get('/certificates/:certificateId/download', superAdminController.downloadCertificate);
 
 // Development/testing utilities
 router.post('/reset-database', superAdminController.resetDatabase);

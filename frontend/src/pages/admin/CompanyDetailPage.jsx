@@ -64,6 +64,14 @@ function CompanyDetailPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [showUserDialog, setShowUserDialog] = useState(false);
   const [showDepartmentDialog, setShowDepartmentDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [showUserDeleteDialog, setShowUserDeleteDialog] = useState(false);
+  const [userDeleteConfirmation, setUserDeleteConfirmation] = useState('');
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [showDepartmentDeleteDialog, setShowDepartmentDeleteDialog] = useState(false);
+  const [departmentDeleteConfirmation, setDepartmentDeleteConfirmation] = useState('');
+  const [departmentToDelete, setDepartmentToDelete] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
   const [departmentError, setDepartmentError] = useState(false);
   const [userFormData, setUserFormData] = useState({
@@ -208,6 +216,19 @@ function CompanyDetailPage() {
     }
   };
 
+  // Calculate lesson count from course modules
+  const getLessonCount = (course) => {
+    if (course.lesson_count !== undefined) {
+      return course.lesson_count;
+    }
+    if (course.modules && Array.isArray(course.modules)) {
+      return course.modules.reduce((total, module) => {
+        return total + (module.lessons ? module.lessons.length : 0);
+      }, 0);
+    }
+    return 0;
+  };
+
   // Open edit company dialog
   const openEditCompanyDialog = () => {
     setEditCompanyData({
@@ -262,18 +283,32 @@ function CompanyDetailPage() {
   };
 
   // Delete department
-  const handleDeleteDepartment = async (departmentId) => {
-    if (!window.confirm('Are you sure you want to delete this department? Users in this department will need to be reassigned.')) {
+  const handleDeleteDepartment = (department) => {
+    setDepartmentToDelete(department);
+    setDepartmentDeleteConfirmation('');
+    setShowDepartmentDeleteDialog(true);
+  };
+
+  const confirmDeleteDepartment = async () => {
+    if (departmentDeleteConfirmation !== departmentToDelete?.name) {
+      toast({
+        title: "Confirmation Required",
+        description: "Please type the exact department name to confirm deletion",
+        variant: "destructive",
+      });
       return;
     }
 
     try {
-      await api.delete(`/super-admin/companies/${companyId}/departments/${departmentId}`);
-      setDepartments(departments.filter(d => d.id !== departmentId));
+      await api.delete(`/super-admin/companies/${companyId}/departments/${departmentToDelete.id}`);
+      setDepartments(departments.filter(d => d.id !== departmentToDelete.id));
       toast({
         title: "Department Deleted",
         description: "Department has been removed successfully.",
       });
+      setShowDepartmentDeleteDialog(false);
+      setDepartmentToDelete(null);
+      setDepartmentDeleteConfirmation('');
     } catch (error) {
       toast({
         title: "Delete Failed",
@@ -368,23 +403,64 @@ function CompanyDetailPage() {
     setShowUserDialog(true);
   };
 
-  const handleDeleteUser = async (userId) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) {
+  const handleDeleteUser = (user) => {
+    setUserToDelete(user);
+    setUserDeleteConfirmation('');
+    setShowUserDeleteDialog(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (userDeleteConfirmation !== userToDelete?.name) {
+      toast({
+        title: "Confirmation Required",
+        description: "Please type the exact user name to confirm deletion",
+        variant: "destructive",
+      });
       return;
     }
 
     try {
-      await api.delete(`/super-admin/users/${userId}`);
+      await api.delete(`/super-admin/users/${userToDelete.id}`);
       toast({
         title: "User Deleted",
         description: "User has been removed successfully.",
       });
+      setShowUserDeleteDialog(false);
+      setUserToDelete(null);
+      setUserDeleteConfirmation('');
       loadCompanyDetails(); // Reload to get updated user list
     } catch (error) {
       console.error('Error deleting user:', error);
       toast({
         title: "Delete Failed",
         description: error.response?.data?.message || "Failed to delete user",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteCompany = async () => {
+    if (deleteConfirmation !== company?.name) {
+      toast({
+        title: "Confirmation Required",
+        description: "Please type the exact company name to confirm deletion",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await api.delete(`/super-admin/companies/${companyId}`);
+      toast({
+        title: "Company Deleted",
+        description: "Company and all associated data has been removed successfully.",
+      });
+      navigate('/admin/companies');
+    } catch (error) {
+      console.error('Error deleting company:', error);
+      toast({
+        title: "Delete Failed",
+        description: error.response?.data?.message || "Failed to delete company",
         variant: "destructive",
       });
     }
@@ -575,11 +651,12 @@ function CompanyDetailPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="departments">Departments</TabsTrigger>
           <TabsTrigger value="courses">Courses</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -862,7 +939,7 @@ function CompanyDetailPage() {
                           <Button 
                             size="sm" 
                             variant="ghost"
-                            onClick={() => handleDeleteUser(user.id)}
+                            onClick={() => handleDeleteUser(user)}
                             className="text-red-500 hover:text-red-700 hover:bg-red-50"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -925,7 +1002,7 @@ function CompanyDetailPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleDeleteDepartment(department.id)}
+                    onClick={() => handleDeleteDepartment(department)}
                     className="text-red-500 hover:text-red-700 hover:bg-red-50"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -966,6 +1043,8 @@ function CompanyDetailPage() {
                     <TableHead>Course</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>Difficulty</TableHead>
+                    <TableHead className="text-center">Type</TableHead>
+                    <TableHead className="text-center">Lessons</TableHead>
                     <TableHead className="text-center">Enrolled</TableHead>
                     <TableHead className="text-center">Completion</TableHead>
                     <TableHead>Status</TableHead>
@@ -981,12 +1060,29 @@ function CompanyDetailPage() {
                       <TableCell className="text-gray-600 dark:text-gray-400">{course.category}</TableCell>
                       <TableCell className="text-gray-600 dark:text-gray-400">{course.difficulty}</TableCell>
                       <TableCell className="text-center">
+                        {course.is_assigned ? (
+                          <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                            Assigned
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                            Own
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-1">
-                          <Users className="h-4 w-4 text-gray-400" />
-                          {course.enrolled_count}
+                          <BookOpen className="h-4 w-4 text-gray-400" />
+                          {getLessonCount(course)}
                         </div>
                       </TableCell>
-                      <TableCell className="text-center">{course.completion_rate}%</TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <Users className="h-4 w-4 text-gray-400" />
+                          {course.enrolled_count || 0}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">{course.completion_rate || 0}%</TableCell>
                       <TableCell>
                         <Badge className={course.is_published ? 'bg-gray-100 text-gray-800' : 'bg-gray-200 text-gray-600'}>
                           {course.is_published ? 'Published' : 'Draft'}
@@ -1006,6 +1102,44 @@ function CompanyDetailPage() {
                   ))}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="settings" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Company Management</CardTitle>
+              <CardDescription>
+                Manage company lifecycle and advanced operations
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-900/20">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0">
+                    <Trash2 className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-medium text-red-800 dark:text-red-200">
+                      Danger Zone
+                    </h4>
+                    <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                      Once you delete a company, there is no going back. Please be certain.
+                    </p>
+                    <div className="mt-3">
+                      <Button
+                        variant="destructive"
+                        onClick={() => setShowDeleteDialog(true)}
+                        className="flex items-center gap-2"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Delete Company
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -1127,6 +1261,199 @@ function CompanyDetailPage() {
               Cancel
             </Button>
             <Button onClick={handleEditCompany}>Update Company</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Company Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="sm:max-w-[500px] max-w-[90vw]">
+          <DialogHeader>
+            <DialogTitle className="text-red-600 dark:text-red-400">Delete Company</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete the company and all associated data.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <div className="flex items-start gap-3">
+                <Trash2 className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
+                <div>
+                  <h4 className="text-sm font-medium text-red-800 dark:text-red-200">
+                    Warning
+                  </h4>
+                  <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                    This will permanently delete:
+                  </p>
+                  <ul className="text-sm text-red-700 dark:text-red-300 mt-2 ml-4 list-disc">
+                    <li>All company users and their data</li>
+                    <li>All company courses and content</li>
+                    <li>All departments and assignments</li>
+                    <li>All company settings and configurations</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="delete-confirmation">
+                Type <strong>{company?.name}</strong> to confirm deletion:
+              </Label>
+              <Input
+                id="delete-confirmation"
+                value={deleteConfirmation}
+                onChange={(e) => setDeleteConfirmation(e.target.value)}
+                placeholder={`Type "${company?.name}" here`}
+                className="border-red-200 dark:border-red-800 focus:border-red-500 dark:focus:border-red-400"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowDeleteDialog(false);
+                setDeleteConfirmation('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleDeleteCompany}
+              disabled={deleteConfirmation !== company?.name}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Company
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Dialog */}
+      <Dialog open={showUserDeleteDialog} onOpenChange={setShowUserDeleteDialog}>
+        <DialogContent className="sm:max-w-[500px] max-w-[90vw]">
+          <DialogHeader>
+            <DialogTitle className="text-red-600 dark:text-red-400">Delete User</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete the user and all their data.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <div className="flex items-start gap-3">
+                <Trash2 className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
+                <div>
+                  <h4 className="text-sm font-medium text-red-800 dark:text-red-200">
+                    Warning
+                  </h4>
+                  <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                    This will permanently delete:
+                  </p>
+                  <ul className="text-sm text-red-700 dark:text-red-300 mt-2 ml-4 list-disc">
+                    <li>User account and profile data</li>
+                    <li>All user progress and course completions</li>
+                    <li>All user-generated content</li>
+                    <li>All user settings and preferences</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="user-delete-confirmation">
+                Type <strong>{userToDelete?.name}</strong> to confirm deletion:
+              </Label>
+              <Input
+                id="user-delete-confirmation"
+                value={userDeleteConfirmation}
+                onChange={(e) => setUserDeleteConfirmation(e.target.value)}
+                placeholder={`Type "${userToDelete?.name}" here`}
+                className="border-red-200 dark:border-red-800 focus:border-red-500 dark:focus:border-red-400"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowUserDeleteDialog(false);
+                setUserDeleteConfirmation('');
+                setUserToDelete(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={confirmDeleteUser}
+              disabled={userDeleteConfirmation !== userToDelete?.name}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete User
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Department Dialog */}
+      <Dialog open={showDepartmentDeleteDialog} onOpenChange={setShowDepartmentDeleteDialog}>
+        <DialogContent className="sm:max-w-[500px] max-w-[90vw]">
+          <DialogHeader>
+            <DialogTitle className="text-red-600 dark:text-red-400">Delete Department</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. Users in this department will need to be reassigned.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <div className="flex items-start gap-3">
+                <Trash2 className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
+                <div>
+                  <h4 className="text-sm font-medium text-red-800 dark:text-red-200">
+                    Warning
+                  </h4>
+                  <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                    This will permanently delete:
+                  </p>
+                  <ul className="text-sm text-red-700 dark:text-red-300 mt-2 ml-4 list-disc">
+                    <li>Department and all its data</li>
+                    <li>Department assignments and configurations</li>
+                    <li>Users will need to be reassigned to other departments</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="department-delete-confirmation">
+                Type <strong>{departmentToDelete?.name}</strong> to confirm deletion:
+              </Label>
+              <Input
+                id="department-delete-confirmation"
+                value={departmentDeleteConfirmation}
+                onChange={(e) => setDepartmentDeleteConfirmation(e.target.value)}
+                placeholder={`Type "${departmentToDelete?.name}" here`}
+                className="border-red-200 dark:border-red-800 focus:border-red-500 dark:focus:border-red-400"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowDepartmentDeleteDialog(false);
+                setDepartmentDeleteConfirmation('');
+                setDepartmentToDelete(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={confirmDeleteDepartment}
+              disabled={departmentDeleteConfirmation !== departmentToDelete?.name}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Department
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

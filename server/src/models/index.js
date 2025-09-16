@@ -6,6 +6,7 @@ const Module = require('./Module');
 const CourseModule = require('./CourseModule');
 const Lesson = require('./Lesson');
 const CourseAssignment = require('./CourseAssignment');
+const CompanyCourseAssignment = require('./CompanyCourseAssignment');
 const UserProgress = require('./UserProgress');
 const Certificate = require('./Certificate');
 const Notification = require('./Notification');
@@ -50,6 +51,7 @@ Course.belongsToMany(Module, {
     as: 'modules'
 });
 Course.hasMany(CourseAssignment, { foreignKey: 'course_id', as: 'assignments' });
+Course.hasMany(CompanyCourseAssignment, { foreignKey: 'course_id', as: 'companyAssignments' });
 Course.hasMany(Certificate, { foreignKey: 'course_id', as: 'certificates' });
 
 // Module associations
@@ -69,6 +71,13 @@ Lesson.hasMany(UserProgress, { foreignKey: 'lesson_id', as: 'progress' });
 CourseAssignment.belongsTo(Course, { foreignKey: 'course_id', as: 'course' });
 CourseAssignment.belongsTo(Company, { foreignKey: 'company_id', as: 'company' });
 CourseAssignment.belongsTo(Department, { foreignKey: 'department_id', as: 'department' });
+
+// CompanyCourseAssignment associations
+CompanyCourseAssignment.belongsTo(Company, { foreignKey: 'company_id', as: 'company' });
+CompanyCourseAssignment.belongsTo(Course, { foreignKey: 'course_id', as: 'course' });
+CompanyCourseAssignment.belongsTo(User, { foreignKey: 'assigned_by', as: 'assigner' });
+Company.hasMany(CompanyCourseAssignment, { foreignKey: 'company_id', as: 'globalCourseAssignments' });
+User.hasMany(CompanyCourseAssignment, { foreignKey: 'assigned_by', as: 'assignedCourses' });
 
 // UserProgress associations
 UserProgress.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
@@ -161,6 +170,7 @@ module.exports = {
     CourseModule,
     Lesson,
     CourseAssignment,
+    CompanyCourseAssignment,
     UserProgress,
     Certificate,
     Notification,

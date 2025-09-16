@@ -52,6 +52,7 @@ import {
 	MoreVertical,
 	UserPlus,
 	Database,
+	Minus,
 	Upload,
 	Image,
 	X,
@@ -92,6 +93,12 @@ function SuperAdminCompaniesPage() {
 	const [selectedDepartment, setSelectedDepartment] = useState("");
 	const [customDepartment, setCustomDepartment] = useState("");
 	const [showCustomDepartment, setShowCustomDepartment] = useState(false);
+	const [showCourseDialog, setShowCourseDialog] = useState(false);
+	const [selectedCompanyForCourses, setSelectedCompanyForCourses] = useState(null);
+	const [assignedCourses, setAssignedCourses] = useState([]);
+	const [availableCourses, setAvailableCourses] = useState([]);
+	const [companyOwnCourses, setCompanyOwnCourses] = useState([]);
+	const [coursesLoading, setCoursesLoading] = useState(false);
 
 	// Common departments list
 	const commonDepartments = [
@@ -405,6 +412,90 @@ function SuperAdminCompaniesPage() {
 
 	const handleManageCompany = (company) => {
 		navigate(`/admin/companies/${company.id}/dashboard`);
+	};
+
+	const handleManageCourses = async (company) => {
+		setSelectedCompanyForCourses(company);
+		setShowCourseDialog(true);
+		await loadCompanyCourses(company.id);
+	};
+
+	const loadCompanyCourses = async (companyId) => {
+		try {
+			setCoursesLoading(true);
+			
+			// Load company details to get all courses (own + assigned)
+			const companyResponse = await api.get(`/super-admin/companies/${companyId}`);
+			if (companyResponse.data?.success && companyResponse.data?.company?.courses) {
+				const allCourses = companyResponse.data.company.courses;
+				const ownCourses = allCourses.filter(course => !course.is_assigned);
+				const assignedCourses = allCourses.filter(course => course.is_assigned);
+				
+				setCompanyOwnCourses(ownCourses);
+				setAssignedCourses(assignedCourses);
+			}
+
+			// Load available global courses
+			const availableResponse = await api.get(`/super-admin/companies/${companyId}/available-courses`);
+			if (availableResponse.data?.success) {
+				setAvailableCourses(availableResponse.data.courses);
+			}
+		} catch (error) {
+			console.error("Error loading company courses:", error);
+			toast({
+				title: "Error",
+				description: "Failed to load courses",
+				variant: "destructive",
+			});
+		} finally {
+			setCoursesLoading(false);
+		}
+	};
+
+	const handleAssignCourse = async (courseId) => {
+		try {
+			await api.post(`/super-admin/companies/${selectedCompanyForCourses.id}/courses`, {
+				courseId
+			});
+			
+			toast({
+				title: "Success",
+				description: "Course assigned successfully",
+			});
+			
+			// Reload courses and refresh company data
+			await loadCompanyCourses(selectedCompanyForCourses.id);
+			await fetchCompanies(); // Refresh the main companies list to update course counts
+		} catch (error) {
+			console.error("Error assigning course:", error);
+			toast({
+				title: "Error",
+				description: "Failed to assign course",
+				variant: "destructive",
+			});
+		}
+	};
+
+	const handleUnassignCourse = async (courseId) => {
+		try {
+			await api.delete(`/super-admin/companies/${selectedCompanyForCourses.id}/courses/${courseId}`);
+			
+			toast({
+				title: "Success",
+				description: "Course unassigned successfully",
+			});
+			
+			// Reload courses and refresh company data
+			await loadCompanyCourses(selectedCompanyForCourses.id);
+			await fetchCompanies(); // Refresh the main companies list to update course counts
+		} catch (error) {
+			console.error("Error unassigning course:", error);
+			toast({
+				title: "Error",
+				description: "Failed to unassign course",
+				variant: "destructive",
+			});
+		}
 	};
 
 	const resetForm = () => {
@@ -1158,10 +1249,10 @@ function SuperAdminCompaniesPage() {
 													</Button>
 													<Button
 														size='sm'
-														variant='ghost'
-														className='text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
-														onClick={() => handleDeleteCompany(company.id)}>
-														<Trash2 className='h-4 w-4' />
+														variant='outline'
+														onClick={() => handleManageCourses(company)}>
+														<BookOpen className='h-4 w-4 mr-1' />
+														Courses
 													</Button>
 												</div>
 											</TableCell>
@@ -1288,6 +1379,195 @@ function SuperAdminCompaniesPage() {
 								Cancel
 							</Button>
 							<Button onClick={handleEditCompany}>Update Company</Button>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
+
+				{/* Course Management Dialog */}
+				<Dialog open={showCourseDialog} onOpenChange={setShowCourseDialog}>
+					<DialogContent className='sm:max-w-[1400px] max-w-[95vw] max-h-[90vh]'>
+						<DialogHeader>
+							<DialogTitle>Manage Courses - {selectedCompanyForCourses?.name}</DialogTitle>
+							<DialogDescription>
+								Manage all courses for this company. View company's own courses, assigned global courses, and assign new global courses.
+							</DialogDescription>
+						</DialogHeader>
+						
+						<div className='grid grid-cols-1 lg:grid-cols-3 gap-6 max-h-[70vh] overflow-y-auto'>
+							{/* Company Own Courses */}
+							<div>
+								<h3 className='text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100'>
+									Company Courses ({companyOwnCourses.length})
+								</h3>
+								{coursesLoading ? (
+									<div className='flex justify-center items-center h-32'>
+										<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary'></div>
+									</div>
+								) : companyOwnCourses.length > 0 ? (
+									<div className='space-y-3'>
+										{companyOwnCourses.map((course) => (
+											<div key={course.id} className='border rounded-lg p-4 bg-blue-50 dark:bg-blue-900/20'>
+												<div className='flex justify-between items-start'>
+													<div className='flex-1'>
+														<h4 className='font-medium text-gray-900 dark:text-gray-100'>
+															{course.title}
+														</h4>
+														<p className='text-sm text-gray-600 dark:text-gray-400 mt-1'>
+															{course.description}
+														</p>
+														<div className='flex gap-2 mt-2'>
+															<Badge className='bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'>
+																{course.category}
+															</Badge>
+															<Badge className='bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'>
+																{course.difficulty}
+															</Badge>
+															<Badge className='bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'>
+																{course.duration_hours}h
+															</Badge>
+															<Badge className='bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'>
+																Own
+															</Badge>
+														</div>
+													</div>
+													<Button
+														size='sm'
+														variant='outline'
+														onClick={() => navigate(`/admin/course-builder/${course.id}`)}
+														className='ml-3'
+													>
+														<Edit className='h-4 w-4' />
+													</Button>
+												</div>
+											</div>
+										))}
+									</div>
+								) : (
+									<div className='text-center py-8 text-gray-500 dark:text-gray-400'>
+										<BookOpen className='h-12 w-12 mx-auto mb-3 opacity-50' />
+										<p>No company courses yet</p>
+									</div>
+								)}
+							</div>
+
+							{/* Assigned Global Courses */}
+							<div>
+								<h3 className='text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100'>
+									Assigned Global Courses ({assignedCourses.length})
+								</h3>
+								{coursesLoading ? (
+									<div className='flex justify-center items-center h-32'>
+										<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary'></div>
+									</div>
+								) : assignedCourses.length > 0 ? (
+									<div className='space-y-3'>
+										{assignedCourses.map((course) => (
+											<div key={course.id} className='border rounded-lg p-4 bg-gray-50 dark:bg-gray-800'>
+												<div className='flex justify-between items-start'>
+													<div className='flex-1'>
+														<h4 className='font-medium text-gray-900 dark:text-gray-100'>
+															{course.title}
+														</h4>
+														<p className='text-sm text-gray-600 dark:text-gray-400 mt-1'>
+															{course.description}
+														</p>
+														<div className='flex gap-2 mt-2'>
+															<Badge className='bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'>
+																{course.category}
+															</Badge>
+															<Badge className='bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'>
+																{course.difficulty}
+															</Badge>
+															<Badge className='bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'>
+																{course.duration_hours}h
+															</Badge>
+														</div>
+													</div>
+													<Button
+														size='sm'
+														variant='outline'
+														onClick={() => handleUnassignCourse(course.id)}
+														className='ml-3 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200'
+													>
+														<Minus className='h-4 w-4 mr-1' />
+														Unassign
+													</Button>
+												</div>
+											</div>
+										))}
+									</div>
+								) : (
+									<div className='text-center py-8 text-gray-500 dark:text-gray-400'>
+										<BookOpen className='h-12 w-12 mx-auto mb-3 opacity-50' />
+										<p>No courses assigned yet</p>
+									</div>
+								)}
+							</div>
+
+							{/* Available Global Courses */}
+							<div>
+								<h3 className='text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100'>
+									Available Global Courses ({availableCourses.length})
+								</h3>
+								{coursesLoading ? (
+									<div className='flex justify-center items-center h-32'>
+										<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary'></div>
+									</div>
+								) : availableCourses.length > 0 ? (
+									<div className='space-y-3'>
+										{availableCourses.map((course) => (
+											<div key={course.id} className='border rounded-lg p-4 bg-white dark:bg-gray-700'>
+												<div className='flex justify-between items-start'>
+													<div className='flex-1'>
+														<h4 className='font-medium text-gray-900 dark:text-gray-100'>
+															{course.title}
+														</h4>
+														<p className='text-sm text-gray-600 dark:text-gray-400 mt-1'>
+															{course.description}
+														</p>
+														<div className='flex gap-2 mt-2'>
+															<Badge className='bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'>
+																{course.category}
+															</Badge>
+															<Badge className='bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'>
+																{course.difficulty}
+															</Badge>
+															<Badge className='bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'>
+																{course.duration_hours}h
+															</Badge>
+															<Badge className='bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'>
+																Global
+															</Badge>
+														</div>
+													</div>
+													<Button
+														size='sm'
+														onClick={() => handleAssignCourse(course.id)}
+														className='ml-3'
+													>
+														<Plus className='h-4 w-4 mr-1' />
+														Assign
+													</Button>
+												</div>
+											</div>
+										))}
+									</div>
+								) : (
+									<div className='text-center py-8 text-gray-500 dark:text-gray-400'>
+										<BookOpen className='h-12 w-12 mx-auto mb-3 opacity-50' />
+										<p>No available global courses</p>
+									</div>
+								)}
+							</div>
+						</div>
+
+						<DialogFooter>
+							<Button
+								variant='outline'
+								onClick={() => setShowCourseDialog(false)}
+							>
+								Close
+							</Button>
 						</DialogFooter>
 					</DialogContent>
 				</Dialog>

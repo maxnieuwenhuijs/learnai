@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useUnsavedChanges } from "@/contexts/UnsavedChangesContext";
 import {
 	LayoutDashboard,
 	BookOpen,
@@ -44,12 +45,15 @@ export function DashboardLayout({ children }) {
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 	const { user, logout } = useAuth();
 	const { theme, toggleTheme } = useTheme();
+	const { checkUnsavedChanges } = useUnsavedChanges();
 	const location = useLocation();
 	const navigate = useNavigate();
 
 	const handleLogout = () => {
-		logout();
-		navigate("/login");
+		checkUnsavedChanges(() => {
+			logout();
+			navigate("/login");
+		});
 	};
 
 	const navigationItems = [
@@ -163,10 +167,12 @@ export function DashboardLayout({ children }) {
 					<div
 						className='flex items-center gap-3 group cursor-pointer'
 						onClick={() =>
-							navigate(
-								user?.role === "super_admin"
-									? "/admin/super-admin"
-									: "/dashboard"
+							checkUnsavedChanges(() =>
+								navigate(
+									user?.role === "super_admin"
+										? "/admin/super-admin"
+										: "/dashboard"
+								)
 							)
 						}>
 						<div className='w-10 h-10 bg-gray-900 dark:bg-gray-100 rounded-lg flex items-center justify-center transition-all duration-200 ease-apple group-hover:scale-105 group-active:scale-95 shadow-sm'>
@@ -196,10 +202,10 @@ export function DashboardLayout({ children }) {
 						const Icon = item.icon;
 						const isActive = location.pathname === item.path;
 						return (
-							<Link
+							<div
 								key={item.path}
-								to={item.path}
-								className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ease-apple group active:scale-[0.98] ${
+								onClick={() => checkUnsavedChanges(() => navigate(item.path))}
+								className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ease-apple group active:scale-[0.98] cursor-pointer ${
 									isActive
 										? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
 										: "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200"
@@ -224,7 +230,7 @@ export function DashboardLayout({ children }) {
 										{item.title}
 									</div>
 								)}
-							</Link>
+							</div>
 						);
 					})}
 				</nav>
@@ -264,7 +270,7 @@ export function DashboardLayout({ children }) {
 				<div className='flex items-center justify-between h-16 px-6 border-b border-gray-200 dark:border-gray-700'>
 					<div
 						className='flex items-center gap-3 group cursor-pointer'
-						onClick={() => navigate("/dashboard")}>
+						onClick={() => checkUnsavedChanges(() => navigate("/dashboard"))}>
 						<div className='w-10 h-10 bg-gray-900 dark:bg-gray-100 rounded-lg flex items-center justify-center transition-all duration-200 ease-apple group-hover:scale-105 group-active:scale-95 shadow-sm'>
 							<GraduationCap className='w-6 h-6 text-white dark:text-gray-900 transition-transform group-hover:rotate-12' />
 						</div>
@@ -288,11 +294,13 @@ export function DashboardLayout({ children }) {
 						const Icon = item.icon;
 						const isActive = location.pathname === item.path;
 						return (
-							<Link
+							<div
 								key={item.path}
-								to={item.path}
-								onClick={() => setMobileMenuOpen(false)}
-								className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+								onClick={() => checkUnsavedChanges(() => {
+									navigate(item.path);
+									setMobileMenuOpen(false);
+								})}
+								className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all cursor-pointer ${
 									isActive
 										? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"
 										: "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -310,7 +318,7 @@ export function DashboardLayout({ children }) {
 									}`}>
 									{item.title}
 								</span>
-							</Link>
+							</div>
 						);
 					})}
 				</nav>
