@@ -4,7 +4,7 @@ import api from './config';
 export const getUserProfile = async () => {
   try {
     const response = await api.get('/settings/profile');
-    return response.data;
+    return response.data.data || null;
   } catch (error) {
     console.error('Error fetching user profile:', error);
     throw error;
@@ -58,7 +58,7 @@ export const changePassword = async (currentPassword, newPassword) => {
 export const getNotificationPreferences = async () => {
   try {
     const response = await api.get('/settings/notifications');
-    return response.data;
+    return response.data.data || {};
   } catch (error) {
     console.error('Error fetching notification preferences:', error);
     throw error;
@@ -80,7 +80,7 @@ export const updateNotificationPreferences = async (preferences) => {
 export const getPrivacySettings = async () => {
   try {
     const response = await api.get('/settings/privacy');
-    return response.data;
+    return response.data.data || {};
   } catch (error) {
     console.error('Error fetching privacy settings:', error);
     throw error;
@@ -102,7 +102,7 @@ export const updatePrivacySettings = async (settings) => {
 export const getLanguagePreferences = async () => {
   try {
     const response = await api.get('/settings/language');
-    return response.data;
+    return response.data.data || {};
   } catch (error) {
     console.error('Error fetching language preferences:', error);
     throw error;
@@ -124,7 +124,7 @@ export const updateLanguagePreference = async (language) => {
 export const getLinkedAccounts = async () => {
   try {
     const response = await api.get('/settings/linked-accounts');
-    return response.data;
+    return response.data.data || [];
   } catch (error) {
     console.error('Error fetching linked accounts:', error);
     throw error;

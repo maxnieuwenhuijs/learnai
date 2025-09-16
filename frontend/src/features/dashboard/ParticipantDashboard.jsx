@@ -37,7 +37,9 @@ export function ParticipantDashboard() {
         progressApi.getUserProgress()
       ]);
 
-      setCourses(coursesResponse || []);
+      // Ensure courses is always an array
+      const coursesData = Array.isArray(coursesResponse) ? coursesResponse : [];
+      setCourses(coursesData);
       setUserProgress(progressResponse || null);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -50,7 +52,7 @@ export function ParticipantDashboard() {
   };
 
   const calculateOverallProgress = () => {
-    if (!courses.length) return 0;
+    if (!Array.isArray(courses) || !courses.length) return 0;
     const totalProgress = courses.reduce((sum, course) => sum + (course.progress || 0), 0);
     return Math.round(totalProgress / courses.length);
   };
@@ -70,6 +72,7 @@ export function ParticipantDashboard() {
   };
 
   const getNextCourse = () => {
+    if (!Array.isArray(courses)) return null;
     return courses.find(course => (course.progress || 0) > 0 && (course.progress || 0) < 100) 
       || courses.find(course => (course.progress || 0) === 0);
   };
@@ -92,8 +95,8 @@ export function ParticipantDashboard() {
   const nextCourse = getNextCourse();
   const overallProgress = calculateOverallProgress();
   const totalTimeSpent = getTotalTimeSpent();
-  const completedCourses = courses.filter(c => (c.progress || 0) === 100).length;
-  const certificatesEarned = courses.filter(c => c.certificateEarned).length;
+  const completedCourses = Array.isArray(courses) ? courses.filter(c => (c.progress || 0) === 100).length : 0;
+  const certificatesEarned = Array.isArray(courses) ? courses.filter(c => c.certificateEarned).length : 0;
 
   return (
     <div className="space-y-6">
@@ -156,7 +159,7 @@ export function ParticipantDashboard() {
             <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center mx-auto mb-3">
               <BookOpen className="w-6 h-6 text-gray-600 dark:text-gray-400" />
             </div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{courses.length}</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{Array.isArray(courses) ? courses.length : 0}</p>
             <p className="text-sm text-gray-600 dark:text-gray-400">Assigned Courses</p>
           </CardContent>
         </Card>
@@ -203,7 +206,7 @@ export function ParticipantDashboard() {
               </Button>
             </CardHeader>
             <CardContent>
-              {courses.length === 0 ? (
+              {!Array.isArray(courses) || courses.length === 0 ? (
                 <div className="text-center py-8">
                   <BookOpen className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
                   <p className="text-gray-500 dark:text-gray-400">No courses assigned yet</p>
@@ -211,7 +214,7 @@ export function ParticipantDashboard() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {courses.slice(0, 3).map((course) => {
+                  {Array.isArray(courses) ? courses.slice(0, 3).map((course) => {
                     const status = getCourseStatus(course.progress || 0);
                     return (
                       <div key={course.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
@@ -232,7 +235,7 @@ export function ParticipantDashboard() {
                         </div>
                       </div>
                     );
-                  })}
+                  }) : []}
                 </div>
               )}
             </CardContent>

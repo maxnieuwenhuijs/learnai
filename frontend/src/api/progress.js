@@ -4,7 +4,7 @@ export const progressApi = {
   // Get user's progress across all courses
   getUserProgress: async () => {
     const response = await api.get('/progress/me');
-    return response.data;
+    return response.data.progress || [];
   },
 
   // Track a learning event

@@ -7,7 +7,7 @@ const getAssignedCourses = async (req, res) => {
         const companyId = req.user.company_id;
         const departmentId = req.user.department_id;
 
-        // Find courses assigned to user's company or department
+        // Find courses assigned to user's company or department (only published courses)
         const courseAssignments = await CourseAssignment.findAll({
             where: {
                 [Op.or]: [
@@ -17,7 +17,10 @@ const getAssignedCourses = async (req, res) => {
             },
             include: [{
                 model: Course,
-                as: 'course'
+                as: 'course',
+                where: {
+                    is_published: true
+                }
             }]
         });
 
@@ -91,7 +94,7 @@ const getCourseDetails = async (req, res) => {
         const { courseId } = req.params;
         const userId = req.user.id;
 
-        // Verify user has access to this course
+        // Verify user has access to this course and it's published
         const hasAccess = await CourseAssignment.findOne({
             where: {
                 course_id: courseId,
@@ -99,13 +102,20 @@ const getCourseDetails = async (req, res) => {
                     { company_id: req.user.company_id, department_id: null },
                     { company_id: req.user.company_id, department_id: req.user.department_id }
                 ]
-            }
+            },
+            include: [{
+                model: Course,
+                as: 'course',
+                where: {
+                    is_published: true
+                }
+            }]
         });
 
         if (!hasAccess) {
             return res.status(403).json({
                 success: false,
-                message: 'Access denied to this course'
+                message: 'Access denied to this course or course not published'
             });
         }
 

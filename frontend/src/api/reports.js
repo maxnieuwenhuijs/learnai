@@ -4,31 +4,31 @@ export const reportsApi = {
   // Get team progress (for managers)
   getTeamProgress: async () => {
     const response = await api.get('/reports/team');
-    return response.data;
+    return response.data.data || [];
   },
 
   // Get compliance report
   getComplianceReport: async (params = {}) => {
     const response = await api.get('/reports/compliance', { params });
-    return response.data;
+    return response.data.data || {};
   },
 
   // Get department analytics
   getDepartmentAnalytics: async (departmentId, params = {}) => {
     const response = await api.get(`/reports/departments/${departmentId}`, { params });
-    return response.data;
+    return response.data.data || {};
   },
 
   // Get course analytics
   getCourseAnalytics: async (courseId, params = {}) => {
     const response = await api.get(`/reports/courses/${courseId}`, { params });
-    return response.data;
+    return response.data.data || {};
   },
 
   // Get overall statistics
   getOverallStatistics: async (params = {}) => {
     const response = await api.get('/reports/statistics', { params });
-    return response.data;
+    return response.data.data || {};
   },
 
   // Export report as PDF
@@ -74,6 +74,6 @@ export const reportsApi = {
   // Get time series data for charts
   getTimeSeriesData: async (metric, params = {}) => {
     const response = await api.get(`/reports/timeseries/${metric}`, { params });
-    return response.data;
+    return response.data.data || [];
   }
 };

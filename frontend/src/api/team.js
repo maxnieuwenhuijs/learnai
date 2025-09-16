@@ -4,7 +4,7 @@ import api from './config';
 export const getTeamMembers = async () => {
   try {
     const response = await api.get('/team/members');
-    return response.data;
+    return response.data.data || [];
   } catch (error) {
     console.error('Error fetching team members:', error);
     throw error;
@@ -15,7 +15,7 @@ export const getTeamMembers = async () => {
 export const getTeamMember = async (userId) => {
   try {
     const response = await api.get(`/team/members/${userId}`);
-    return response.data;
+    return response.data.data || null;
   } catch (error) {
     console.error('Error fetching team member:', error);
     throw error;
@@ -26,7 +26,7 @@ export const getTeamMember = async (userId) => {
 export const getTeamProgress = async () => {
   try {
     const response = await api.get('/team/progress');
-    return response.data;
+    return response.data.data || [];
   } catch (error) {
     console.error('Error fetching team progress:', error);
     throw error;
@@ -37,7 +37,7 @@ export const getTeamProgress = async () => {
 export const getMemberCourseProgress = async (userId, courseId) => {
   try {
     const response = await api.get(`/team/members/${userId}/courses/${courseId}`);
-    return response.data;
+    return response.data.data || null;
   } catch (error) {
     console.error('Error fetching member course progress:', error);
     throw error;
@@ -81,7 +81,7 @@ export const getTeamAnalytics = async (startDate, endDate) => {
     if (endDate) params.endDate = endDate;
     
     const response = await api.get('/team/analytics', { params });
-    return response.data;
+    return response.data.data || {};
   } catch (error) {
     console.error('Error fetching team analytics:', error);
     throw error;

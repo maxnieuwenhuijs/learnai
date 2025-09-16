@@ -4,7 +4,7 @@ import api from './config';
 export const getUpcomingEvents = async () => {
   try {
     const response = await api.get('/calendar/events');
-    return response.data;
+    return response.data.data || [];
   } catch (error) {
     console.error('Error fetching calendar events:', error);
     throw error;
@@ -15,7 +15,7 @@ export const getUpcomingEvents = async () => {
 export const getCourseDeadlines = async () => {
   try {
     const response = await api.get('/calendar/deadlines');
-    return response.data;
+    return response.data.data || [];
   } catch (error) {
     console.error('Error fetching course deadlines:', error);
     throw error;
@@ -26,7 +26,7 @@ export const getCourseDeadlines = async () => {
 export const getScheduledSessions = async () => {
   try {
     const response = await api.get('/calendar/sessions');
-    return response.data;
+    return response.data.data || [];
   } catch (error) {
     console.error('Error fetching scheduled sessions:', error);
     throw error;
@@ -72,7 +72,7 @@ export const getEventsByDateRange = async (startDate, endDate) => {
     const response = await api.get('/calendar/events/range', {
       params: { startDate, endDate }
     });
-    return response.data;
+    return response.data.data || [];
   } catch (error) {
     console.error('Error fetching events by date range:', error);
     throw error;
@@ -98,7 +98,7 @@ export const scheduleLearningSession = async (courseId, dateTime, duration) => {
 export const getReminders = async () => {
   try {
     const response = await api.get('/calendar/reminders');
-    return response.data;
+    return response.data.data || [];
   } catch (error) {
     console.error('Error fetching reminders:', error);
     throw error;
