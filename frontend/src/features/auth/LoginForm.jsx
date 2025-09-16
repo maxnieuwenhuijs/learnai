@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { getApiBaseUrl } from '@/utils/urlUtils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,11 +40,11 @@ export function LoginForm() {
 
   // OAuth login handlers
   const handleGoogleLogin = () => {
-    window.location.href = 'http://localhost:5000/api/auth/google';
+    window.location.href = `${getApiBaseUrl()}/auth/google`;
   };
 
   const handleMicrosoftLogin = () => {
-    window.location.href = 'http://localhost:5000/api/auth/microsoft';
+    window.location.href = `${getApiBaseUrl()}/auth/microsoft`;
   };
 
   return (

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { getCompanyLogoUrl } from '@/utils/urlUtils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -556,7 +557,7 @@ function CompanyDetailPage() {
             <div className="flex-shrink-0">
               {company?.logo_url ? (
                 <img
-                  src={company.logo_url.startsWith('http') ? company.logo_url : `http://localhost:5000${company.logo_url}`}
+                  src={getCompanyLogoUrl(company.logo_url)}
                   alt={`${company.name} logo`}
                   className="h-16 w-16 object-contain rounded border bg-white"
                   onError={(e) => {
@@ -1241,7 +1242,7 @@ function CompanyDetailPage() {
             <div className="flex items-center gap-4 mt-2">
               {company?.logo_url && (
                 <img
-                  src={company.logo_url.startsWith('http') ? company.logo_url : `http://localhost:5000${company.logo_url}`}
+                  src={getCompanyLogoUrl(company.logo_url)}
                   alt={`${company.name} logo`}
                   className="h-12 w-12 object-contain rounded border bg-white"
                 />

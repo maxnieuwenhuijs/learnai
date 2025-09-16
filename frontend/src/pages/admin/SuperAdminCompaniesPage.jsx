@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { getCompanyLogoUrl } from "@/utils/urlUtils";
 import {
 	Card,
 	CardContent,
@@ -1176,11 +1177,7 @@ function SuperAdminCompaniesPage() {
 												<div className='flex items-center space-x-3'>
 													{company.logo_url ? (
 														<img
-															src={
-																company.logo_url.startsWith("http")
-																	? company.logo_url
-																	: `http://localhost:5000${company.logo_url}`
-															}
+															src={getCompanyLogoUrl(company.logo_url)}
 															alt={`${company.name} logo`}
 															className='h-10 w-10 object-contain rounded border bg-white flex-shrink-0'
 															onError={(e) => {
