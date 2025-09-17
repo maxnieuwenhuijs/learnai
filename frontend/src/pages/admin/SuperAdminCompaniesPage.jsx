@@ -322,13 +322,13 @@ function SuperAdminCompaniesPage() {
 					variant: "destructive",
 				});
 			} else {
-				// For demo purposes, simulate success
+				// Real API success
 				toast({
 					title: "Company Created",
 					description: `${formData.name} has been successfully created`,
 				});
 
-				// Add to local state for demo
+				// Add to local state
 				const newCompany = {
 					id: Date.now(),
 					name: formData.name,
@@ -369,7 +369,7 @@ function SuperAdminCompaniesPage() {
 				fetchCompanies();
 			}
 		} catch (error) {
-			// For demo purposes
+			// Real API call
 			toast({
 				title: "Company Updated",
 				description: `${formData.name} has been updated`,

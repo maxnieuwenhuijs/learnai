@@ -37,9 +37,34 @@ export function ParticipantDashboard() {
         progressApi.getUserProgress()
       ]);
 
-      // Ensure courses is always an array
+      // Transform API response to match expected format (same as MyCoursesPage)
       const coursesData = Array.isArray(coursesResponse) ? coursesResponse : [];
-      setCourses(coursesData);
+      const transformedCourses = coursesData.map(course => ({
+        id: course.id,
+        title: course.title,
+        description: course.description,
+        category: course.category || 'general',
+        duration: course.estimatedDuration || '0 hours',
+        modules: course.totalLessons || 0,
+        completedModules: course.completedLessons || 0,
+        progress: course.progressPercentage || 0,
+        status: course.status || 'not-started',
+        deadline: course.deadline,
+        instructor: course.instructor,
+        difficulty: course.difficulty || 'beginner',
+        lastAccessed: course.lastAccessed,
+        nextLesson: course.nextLesson,
+        estimatedCompletion: course.estimatedCompletion,
+        thumbnail: course.thumbnail,
+        enrolled: course.enrolledCount || 0,
+        rating: course.rating || 0,
+        certificate: course.hasCertificate || false,
+        certificateEarned: course.certificateEarned || false,
+        finalScore: course.finalScore,
+        quizScore: course.quizScore,
+        completedDate: course.completedDate
+      }));
+      setCourses(transformedCourses);
       setUserProgress(progressResponse || null);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -73,15 +98,15 @@ export function ParticipantDashboard() {
 
   const getNextCourse = () => {
     if (!Array.isArray(courses)) return null;
-    return courses.find(course => (course.progress || 0) > 0 && (course.progress || 0) < 100) 
-      || courses.find(course => (course.progress || 0) === 0);
+    // Find in-progress courses first, then not-started courses
+    return courses.find(course => course.status === 'in-progress') 
+      || courses.find(course => course.status === 'not-started');
   };
 
-  const getCourseStatus = (progress) => {
-    if (progress === 0) return { label: 'Not Started', color: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' };
-    if (progress < 50) return { label: 'In Progress', color: 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200' };
-    if (progress < 100) return { label: 'Almost Done', color: 'bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-gray-100' };
-    return { label: 'Completed', color: 'bg-gray-400 dark:bg-gray-500 text-gray-900 dark:text-gray-100' };
+  const getCourseStatus = (course) => {
+    if (course.status === 'completed') return { label: 'Completed', color: 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' };
+    if (course.status === 'in-progress') return { label: 'In Progress', color: 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' };
+    return { label: 'Not Started', color: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' };
   };
 
   if (loading) {
@@ -215,7 +240,7 @@ export function ParticipantDashboard() {
               ) : (
                 <div className="space-y-4">
                   {Array.isArray(courses) ? courses.slice(0, 3).map((course) => {
-                    const status = getCourseStatus(course.progress || 0);
+                    const status = getCourseStatus(course);
                     return (
                       <div key={course.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                         <div className="flex-1">

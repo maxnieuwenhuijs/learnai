@@ -9,11 +9,23 @@ export const progressApi = {
 
   // Track a learning event
   trackEvent: async (lessonId, eventType, details = {}) => {
+    console.log(`📤 Frontend: Sending ${eventType} event for lesson ${lessonId}`, details);
     const response = await api.post('/progress/event', {
       lessonId,
       eventType,
       details
     });
+    console.log(`📥 Frontend: Received response for ${eventType}:`, response.data);
+    
+    // Show certificate feedback if available (only for LESSON_COMPLETED events)
+    if (eventType === 'LESSON_COMPLETED' && response.data && response.data.message) {
+      if (response.data.certificateCreated) {
+        alert(`🎉 ${response.data.message}`);
+      } else {
+        alert(`⚠️ ${response.data.message}`);
+      }
+    }
+    
     return response.data;
   },
 

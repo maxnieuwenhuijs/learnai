@@ -212,7 +212,7 @@ export function SuperAdminDashboard() {
 					variant: "destructive",
 				});
 			} else {
-				// For demo purposes, simulate success
+				// Real API success
 				toast({
 					title: "User Created",
 					description: `${userFormData.name} has been created as ${userFormData.role}`,
@@ -238,13 +238,8 @@ export function SuperAdminDashboard() {
 					setSelectedCompanyDepartments(response.data.company.departments);
 				}
 			} catch (error) {
-				// Use mock departments for demo
-				setSelectedCompanyDepartments([
-					{ id: 1, name: "Management" },
-					{ id: 2, name: "HR" },
-					{ id: 3, name: "IT" },
-					{ id: 4, name: "General" },
-				]);
+				console.error("Error loading departments:", error);
+				setSelectedCompanyDepartments([]);
 			}
 		} else {
 			setSelectedCompanyDepartments([]);

@@ -35,29 +35,24 @@ export function ManagerDashboard() {
   const loadTeamData = async () => {
     try {
       setLoading(true);
-      const response = await reportsApi.getTeamProgress();
       
-      if (response?.data) {
-        setTeamData(response.data.stats || {
-          totalMembers: 0,
-          activeMembers: 0,
-          avgCompletion: 0,
-          totalCertificates: 0
-        });
-        setTeamMembers(response.data.members || []);
-      } else {
-        // Start completely empty
+      // Get team progress from reports API
+      const data = await reportsApi.getTeamProgress();
+      
+      if (data.success) {
         setTeamData({
-          totalMembers: 0,
-          activeMembers: 0,
-          avgCompletion: 0,
-          totalCertificates: 0
+          totalMembers: data.aggregates?.totalMembers || 0,
+          activeMembers: data.aggregates?.totalMembers || 0, // All members are considered active
+          avgCompletion: data.aggregates?.averageProgress || 0,
+          totalCertificates: data.aggregates?.totalCoursesCompleted || 0
         });
-        setTeamMembers([]);
+        setTeamMembers(data.members || []);
+      } else {
+        throw new Error(data.message || 'Failed to load team data');
       }
     } catch (error) {
       console.error('Error loading team data:', error);
-      // Start completely empty
+      // Start with empty data
       setTeamData({
         totalMembers: 0,
         activeMembers: 0,

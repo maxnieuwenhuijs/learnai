@@ -127,6 +127,7 @@ const createCourseValidation = [
 
 router.get('/courses', superAdminController.getCourses);
 router.get('/courses/:id', superAdminController.getCourse);
+router.get('/courses/:id/analytics', superAdminController.getCourseProgressAnalytics);
 router.post('/courses', createCourseValidation, superAdminController.createCourse);
 router.put('/courses/:id', createCourseValidation, superAdminController.updateCourse);
 router.delete('/courses/:id', superAdminController.deleteCourse);

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { reportsApi } from '@/api/reports';
 import { 
   Users, 
   BookOpen, 
@@ -41,8 +42,22 @@ export function AdminDashboard() {
   const loadDashboardStats = async () => {
     try {
       setLoading(true);
-      // API call would go here
-      // For now, keep everything at 0 (completely empty)
+      
+      // Get dashboard stats from super admin API
+      const data = await reportsApi.getDashboardStats();
+      
+      if (data.success && data.data) {
+        setStats({
+          totalUsers: data.data.totalUsers || 0,
+          activeCourses: data.data.totalCourses || 0,
+          completionRate: 0, // Will be calculated separately
+          certificates: data.data.totalCertificates || 0,
+          totalPrompts: 0, // Will be added later
+          promptUsage: 0 // Will be added later
+        });
+      } else {
+        console.error('Failed to load dashboard stats:', data.message);
+      }
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
     } finally {

@@ -1,80 +1,54 @@
 import api from './config';
 
-// Get all certificates for the current user
-export const getUserCertificates = async () => {
-  try {
+export const certificatesApi = {
+  // Get user's certificates
+  getUserCertificates: async () => {
     const response = await api.get('/certificates');
-    return response.data.data || [];
-  } catch (error) {
-    console.error('Error fetching certificates:', error);
-    throw error;
-  }
-};
+    return response.data;
+  },
 
-// Get a specific certificate by ID
-export const getCertificate = async (certificateId) => {
-  try {
+  // Get specific certificate
+  getCertificate: async (certificateId) => {
     const response = await api.get(`/certificates/${certificateId}`);
-    return response.data.data || null;
-  } catch (error) {
-    console.error('Error fetching certificate:', error);
-    throw error;
-  }
-};
+    return response.data;
+  },
 
-// Download certificate as PDF
-export const downloadCertificatePDF = async (certificateId) => {
-  try {
+  // Verify certificate
+  verifyCertificate: async (verificationCode) => {
+    const response = await api.get(`/certificates/verify/${verificationCode}`);
+    return response.data;
+  },
+
+  // Download certificate PDF
+  downloadCertificatePDF: async (certificateId) => {
     const response = await api.get(`/certificates/${certificateId}/download`, {
       responseType: 'blob'
     });
     
-    // Create a download link
-    const url = window.URL.createObjectURL(new Blob([response.data]));
+    // Create blob URL and trigger download
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `certificate-${certificateId}.pdf`);
+    link.download = `certificate-${certificateId}.pdf`;
     document.body.appendChild(link);
     link.click();
-    link.remove();
+    document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
-    
-    return true;
-  } catch (error) {
-    console.error('Error downloading certificate:', error);
-    throw error;
-  }
-};
+  },
 
-// Verify a certificate
-export const verifyCertificate = async (certificateId) => {
-  try {
-    const response = await api.get(`/certificates/verify/${certificateId}`);
-    return response.data.data || null;
-  } catch (error) {
-    console.error('Error verifying certificate:', error);
-    throw error;
-  }
-};
-
-// Generate a new certificate (for completed courses)
-export const generateCertificate = async (courseId) => {
-  try {
+  // Generate certificate for completed course
+  generateCertificate: async (courseId) => {
     const response = await api.post('/certificates/generate', { courseId });
-    return response.data.data || null;
-  } catch (error) {
-    console.error('Error generating certificate:', error);
-    throw error;
+    return response.data;
   }
 };
 
-// Share certificate via email
-export const shareCertificate = async (certificateId, email) => {
-  try {
-    const response = await api.post(`/certificates/${certificateId}/share`, { email });
-    return response.data.data || null;
-  } catch (error) {
-    console.error('Error sharing certificate:', error);
-    throw error;
-  }
-};
+// Export individual functions for convenience
+export const {
+  getUserCertificates,
+  getCertificate,
+  verifyCertificate,
+  downloadCertificatePDF,
+  generateCertificate
+} = certificatesApi;

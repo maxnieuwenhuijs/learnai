@@ -52,6 +52,8 @@ export function useCourseTracking(lessonId, isPreviewMode = false) {
   const completeLesson = async (quizScore = null) => {
     if (!lessonId || isPreviewMode) return true; // Return true in preview mode
 
+    console.log(`🎯 Frontend: Attempting to complete lesson ${lessonId} with quiz score:`, quizScore);
+
     try {
       // Clear interval before completing
       if (intervalRef.current) {
@@ -59,9 +61,10 @@ export function useCourseTracking(lessonId, isPreviewMode = false) {
       }
 
       await progressApi.completeLesson(lessonId, quizScore);
+      console.log(`✅ Frontend: Successfully completed lesson ${lessonId}`);
       return true;
     } catch (error) {
-      console.error('Error completing lesson:', error);
+      console.error('❌ Frontend: Error completing lesson:', error);
       return false;
     }
   };

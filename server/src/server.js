@@ -90,6 +90,7 @@ const courseRoutes = require('./api/routes/courses.routes');
 const progressRoutes = require('./api/routes/progress.routes');
 const reportsRoutes = require('./api/routes/reports.routes');
 const promptsRoutes = require('./api/routes/prompts.routes');
+const searchRoutes = require('./api/routes/search.routes');
 
 // Try to import super admin routes
 let superAdminRoutes;
@@ -144,6 +145,7 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/prompts', promptsRoutes);
+app.use('/api/search', searchRoutes);
 
 // Super Admin Routes
 if (superAdminRoutes) {

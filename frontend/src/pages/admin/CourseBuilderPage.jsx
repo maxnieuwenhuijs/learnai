@@ -14,6 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CourseProgressAnalytics } from "@/components/admin/CourseProgressAnalytics";
+import CertificateManager from "@/components/certificates/CertificateManager";
 import {
 	Dialog,
 	DialogContent,
@@ -34,7 +36,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useUnsavedChanges } from "@/contexts/UnsavedChangesContext";
 import QuillEditor from "@/components/shared/QuillEditor";
 import QuizBuilder from "@/components/shared/QuizBuilder";
-import CertificateManager from "@/components/certificates/CertificateManager";
 import {
 	DndContext,
 	closestCenter,
@@ -505,52 +506,13 @@ function CourseBuilderPage() {
 			}
 		} catch (error) {
 			console.error("Error fetching course:", error);
-			// Use mock data for demo
-			setCourse(getMockCourse());
+			// Set course to null on error - no mock data
+			setCourse(null);
 		} finally {
 			setLoading(false);
 		}
 	};
 
-	const getMockCourse = () => ({
-		id: courseId,
-		title: "Introduction to EU AI Act",
-		description:
-			"Comprehensive overview of the EU AI Act regulations and compliance requirements",
-		category: "Compliance",
-		difficulty: "beginner",
-		duration_hours: 3,
-		image_url: "",
-		is_published: false,
-		modules: [
-			{
-				id: 1,
-				title: "Understanding AI Regulation",
-				description: "Introduction to AI regulation landscape",
-				order: 0,
-				lessons: [
-					{
-						id: 1,
-						title: "What is the EU AI Act?",
-						type: "video",
-						duration: 15,
-					},
-					{ id: 2, title: "Key Principles", type: "text", duration: 10 },
-					{ id: 3, title: "Knowledge Check", type: "quiz", duration: 5 },
-				],
-			},
-			{
-				id: 2,
-				title: "Risk Categories",
-				description: "Understanding different risk levels in AI systems",
-				order: 1,
-				lessons: [
-					{ id: 4, title: "High-Risk AI Systems", type: "video", duration: 20 },
-					{ id: 5, title: "Assessment Criteria", type: "text", duration: 15 },
-				],
-			},
-		],
-	});
 
 	const handleSaveCourse = async () => {
 		try {
@@ -1232,6 +1194,7 @@ function CourseBuilderPage() {
 					<TabsList className='mb-6'>
 						<TabsTrigger value='details'>Course Details</TabsTrigger>
 						<TabsTrigger value='modules'>Modules & Lessons</TabsTrigger>
+						<TabsTrigger value='analytics'>Progress Analytics</TabsTrigger>
 						<TabsTrigger value='certificates'>Certificates</TabsTrigger>
 						<TabsTrigger value='settings'>Settings</TabsTrigger>
 					</TabsList>
@@ -1477,6 +1440,10 @@ function CourseBuilderPage() {
 								}
 							}}
 						/>
+					</TabsContent>
+
+					<TabsContent value='analytics'>
+						<CourseProgressAnalytics courseId={courseId} />
 					</TabsContent>
 
 					<TabsContent value='settings'>

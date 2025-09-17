@@ -21,6 +21,9 @@ import {
 import { CourseSidebar } from "./components/CourseSidebar";
 import { LessonContent } from "./components/LessonContent";
 import { useCourseTracking } from "./hooks/useCourseTracking";
+import { CertificateSuccessModal } from "@/components/certificates/CertificateSuccessModal";
+import { CourseCompletionCelebration } from "@/components/certificates/CourseCompletionCelebration";
+import { downloadCertificatePDF } from "@/api/certificates";
 
 export function CoursePlayer() {
 	const { courseId } = useParams();
@@ -30,6 +33,8 @@ export function CoursePlayer() {
 	const [currentLesson, setCurrentLesson] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [sidebarOpen, setSidebarOpen] = useState(true);
+	const [showCertificateModal, setShowCertificateModal] = useState(false);
+	const [newCertificate, setNewCertificate] = useState(null);
 
 	const isPreviewMode = window.location.pathname.includes("/course-preview/");
 	const { startLesson, completeLesson, updateTimeSpent } = useCourseTracking(
@@ -118,6 +123,13 @@ export function CoursePlayer() {
 		// Reload course to update progress
 		await loadCourse();
 
+		// Check if course is completed
+		const courseProgress = calculateCourseProgress();
+		if (courseProgress === 100) {
+			// Course completed! Check for new certificate
+			await checkForNewCertificate();
+		}
+
 		// Move to next lesson
 		const nextLesson = findNextLesson();
 		if (nextLesson) {
@@ -181,6 +193,48 @@ export function CoursePlayer() {
 		return totalLessons > 0
 			? Math.round((completedLessons / totalLessons) * 100)
 			: 0;
+	};
+
+	const checkForNewCertificate = async () => {
+		try {
+			// Get user's certificates to check for new ones
+			const response = await api.get('/certificates');
+			const certificates = response.data.certificates || [];
+			
+			// Find certificate for this course
+			const courseCertificate = certificates.find(cert => cert.courseId === parseInt(courseId));
+			
+			if (courseCertificate) {
+				// Check if this certificate was created recently (within last 30 seconds)
+				const certificateDate = new Date(courseCertificate.issuedAt);
+				const now = new Date();
+				const timeDiff = (now - certificateDate) / 1000; // in seconds
+				
+				if (timeDiff < 30) {
+					// This is a new certificate! Show the success modal
+					setNewCertificate(courseCertificate);
+					setShowCertificateModal(true);
+				}
+			}
+		} catch (error) {
+			console.error('Error checking for new certificate:', error);
+		}
+	};
+
+	const handleViewCertificates = () => {
+		setShowCertificateModal(false);
+		navigate('/certificates');
+	};
+
+	const handleViewCertificate = () => {
+		// This will be called from the celebration component
+		// We'll check for certificate and show the modal
+		checkForNewCertificate();
+	};
+
+	const handleContinueLearning = () => {
+		// Navigate to dashboard or next course
+		navigate('/dashboard');
 	};
 
 	if (loading) {
@@ -344,6 +398,23 @@ export function CoursePlayer() {
 					</div>
 				)}
 			</div>
+
+			{/* Course Completion Celebration */}
+			<CourseCompletionCelebration
+				course={course}
+				courseProgress={calculateCourseProgress()}
+				onViewCertificate={handleViewCertificate}
+				onContinueLearning={handleContinueLearning}
+			/>
+
+			{/* Certificate Success Modal */}
+			<CertificateSuccessModal
+				isOpen={showCertificateModal}
+				onClose={() => setShowCertificateModal(false)}
+				certificate={newCertificate}
+				courseTitle={course?.title}
+				onViewCertificates={handleViewCertificates}
+			/>
 		</div>
 	);
 }

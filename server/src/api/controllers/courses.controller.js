@@ -60,9 +60,31 @@ const getAssignedCourses = async (req, res) => {
                     }
                 });
 
+                // Get completion date (last lesson completed)
+                let completedDate = null;
+                if (completedLessons > 0) {
+                    const lastCompleted = await UserProgress.findOne({
+                        where: {
+                            user_id: userId,
+                            lesson_id: { [Op.in]: lessonIds },
+                            status: 'completed'
+                        },
+                        order: [['completed_at', 'DESC']]
+                    });
+                    completedDate = lastCompleted?.completed_at;
+                }
+
                 const progressPercentage = totalLessons > 0 
                     ? Math.round((completedLessons / totalLessons) * 100)
                     : 0;
+
+                // Determine course status
+                let status = 'not-started';
+                if (completedLessons > 0 && completedLessons < totalLessons) {
+                    status = 'in-progress';
+                } else if (completedLessons === totalLessons && totalLessons > 0) {
+                    status = 'completed';
+                }
 
                 return {
                     id: course.id,
@@ -71,7 +93,9 @@ const getAssignedCourses = async (req, res) => {
                     target_role: course.target_role,
                     totalLessons,
                     completedLessons,
-                    progressPercentage
+                    progressPercentage,
+                    status,
+                    completedDate
                 };
             })
         );

@@ -1743,7 +1743,7 @@ const getCourses = async (req, res) => {
                     include: [{
                         model: Lesson,
                         as: 'lessons',
-                        attributes: ['id', 'title', 'lesson_order']
+                        attributes: ['id', 'title', 'content_type', 'content_data', 'lesson_order']
                     }]
                 }
             ]
@@ -1794,6 +1794,7 @@ const getCourse = async (req, res) => {
                         {
                             model: Lesson,
                             as: 'lessons',
+                            attributes: ['id', 'title', 'content_type', 'content_data', 'lesson_order'],
                             order: [['lesson_order', 'ASC']]
                         }
                     ]
@@ -2301,6 +2302,123 @@ const deleteLesson = async (req, res) => {
     }
 };
 
+// Get course progress analytics
+const getCourseProgressAnalytics = async (req, res) => {
+    try {
+        const { courseId } = req.params;
+
+        // Get course with all lessons
+        const course = await Course.findByPk(courseId, {
+            include: [{
+                model: Module,
+                as: 'modules',
+                include: [{
+                    model: Lesson,
+                    as: 'lessons'
+                }]
+            }]
+        });
+
+        if (!course) {
+            return res.status(404).json({
+                success: false,
+                message: 'Course not found'
+            });
+        }
+
+        // Get all lesson IDs for this course
+        const lessonIds = course.modules.flatMap(m => m.lessons.map(l => l.id));
+
+        // Get progress statistics
+        const totalLessons = lessonIds.length;
+        const totalUsers = await User.count({
+            where: {
+                [Op.or]: [
+                    { company_id: course.company_id },
+                    { role: 'super_admin' }
+                ]
+            }
+        });
+
+        // Get completion statistics
+        const completionStats = await UserProgress.findAll({
+            where: {
+                lesson_id: { [Op.in]: lessonIds },
+                status: 'completed'
+            },
+            include: [{
+                model: User,
+                as: 'user',
+                attributes: ['id', 'name', 'email', 'company_id']
+            }]
+        });
+
+        // Calculate completion rates
+        const completionByLesson = {};
+        const completionByUser = {};
+
+        lessonIds.forEach(lessonId => {
+            completionByLesson[lessonId] = {
+                total: 0,
+                completed: 0,
+                completionRate: 0
+            };
+        });
+
+        completionStats.forEach(progress => {
+            const lessonId = progress.lesson_id;
+            const userId = progress.user_id;
+
+            if (!completionByUser[userId]) {
+                completionByUser[userId] = {
+                    total: 0,
+                    completed: 0,
+                    completionRate: 0
+                };
+            }
+
+            completionByLesson[lessonId].completed++;
+            completionByUser[userId].completed++;
+        });
+
+        // Calculate rates
+        Object.keys(completionByLesson).forEach(lessonId => {
+            const lesson = completionByLesson[lessonId];
+            lesson.total = totalUsers;
+            lesson.completionRate = totalUsers > 0 ? Math.round((lesson.completed / totalUsers) * 100) : 0;
+        });
+
+        Object.keys(completionByUser).forEach(userId => {
+            const user = completionByUser[userId];
+            user.total = totalLessons;
+            user.completionRate = totalLessons > 0 ? Math.round((user.completed / totalLessons) * 100) : 0;
+        });
+
+        // Get average completion rate
+        const averageCompletionRate = Object.values(completionByLesson).reduce((sum, lesson) => sum + lesson.completionRate, 0) / totalLessons;
+
+        res.json({
+            success: true,
+            analytics: {
+                courseId: course.id,
+                courseTitle: course.title,
+                totalLessons,
+                totalUsers,
+                averageCompletionRate: Math.round(averageCompletionRate),
+                completionByLesson,
+                completionByUser: Object.values(completionByUser),
+                totalCompletions: completionStats.length
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching course progress analytics:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching course progress analytics'
+        });
+    }
+};
+
 // Company Course Assignment Management
 const getCompanyCourses = async (req, res) => {
     try {
@@ -2621,7 +2739,7 @@ const getCourseCertificates = async (req, res) => {
             where: { course_id: courseId },
             limit: parseInt(limit),
             offset: (parseInt(page) - 1) * parseInt(limit),
-            order: [['created_at', 'DESC']],
+            order: [['issued_at', 'DESC']],
             include: [
                 {
                     model: User,
@@ -2815,6 +2933,7 @@ module.exports = {
     updateCourse,
     deleteCourse,
     duplicateCourse,
+    getCourseProgressAnalytics,
     // Module Management
     getCourseModules,
     createModule,

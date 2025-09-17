@@ -27,12 +27,43 @@ const Certificate = sequelize.define('Certificate', {
         type: DataTypes.STRING(255),
         allowNull: false,
         unique: true
+    },
+    verification_code: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+        unique: true
+    },
+    issued_at: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW
+    },
+    valid_until: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    status: {
+        type: DataTypes.ENUM('active', 'revoked', 'expired'),
+        allowNull: false,
+        defaultValue: 'active'
+    },
+    settings: {
+        type: DataTypes.JSON,
+        allowNull: true
+    },
+    final_score: {
+        type: DataTypes.FLOAT,
+        allowNull: true
+    },
+    completion_time: {
+        type: DataTypes.INTEGER, // in minutes
+        allowNull: true
     }
 }, {
     tableName: 'certificates',
     timestamps: true,
     createdAt: 'issued_at',
-    updatedAt: false
+    updatedAt: 'updated_at'
 });
 
 module.exports = Certificate;

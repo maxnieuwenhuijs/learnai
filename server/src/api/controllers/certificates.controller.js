@@ -6,6 +6,14 @@ const { v4: uuidv4 } = require('uuid');
 // Get all certificates for the authenticated user
 const getUserCertificates = async (req, res) => {
     try {
+        // Handle super admin case - they shouldn't have certificates
+        if (req.user.standalone && req.user.role === 'super_admin') {
+            return res.json({
+                success: true,
+                certificates: []
+            });
+        }
+        
         const userId = req.user.id;
 
         const certificates = await Certificate.findAll({
@@ -49,6 +57,15 @@ const getUserCertificates = async (req, res) => {
 const getCertificate = async (req, res) => {
     try {
         const { id } = req.params;
+        
+        // Handle super admin case - they shouldn't have certificates
+        if (req.user.standalone && req.user.role === 'super_admin') {
+            return res.status(404).json({
+                success: false,
+                message: 'Certificate not found'
+            });
+        }
+        
         const userId = req.user.id;
 
         const certificate = await Certificate.findOne({
@@ -111,6 +128,15 @@ const getCertificate = async (req, res) => {
 const generateCertificate = async (req, res) => {
     try {
         const { courseId } = req.body;
+        
+        // Handle super admin case - they shouldn't generate certificates
+        if (req.user.standalone && req.user.role === 'super_admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Super admin users cannot generate certificates'
+            });
+        }
+        
         const userId = req.user.id;
 
         if (!courseId) {
@@ -140,7 +166,7 @@ const generateCertificate = async (req, res) => {
             });
         }
 
-        // Check if course exists
+        // Check if course exists and get certificate settings
         const course = await Course.findByPk(courseId, {
             include: [{
                 model: Module,
@@ -157,6 +183,18 @@ const generateCertificate = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'Course not found'
+            });
+        }
+
+        // Get certificate settings
+        const certificateSettings = course.certificate_settings ? 
+            JSON.parse(course.certificate_settings) : null;
+
+        // Check if certificates are enabled for this course
+        if (!certificateSettings || !certificateSettings.enabled) {
+            return res.status(400).json({
+                success: false,
+                message: 'Certificates are not enabled for this course'
             });
         }
 
@@ -197,14 +235,64 @@ const generateCertificate = async (req, res) => {
             });
         }
 
-        // Generate unique certificate UID
+        // Calculate final score if required
+        let finalScore = null;
+        if (certificateSettings.requireQuiz) {
+            const quizScores = await UserProgress.findAll({
+                where: {
+                    user_id: userId,
+                    lesson_id: { [Op.in]: lessonIds },
+                    status: 'completed',
+                    quiz_score: { [Op.not]: null }
+                },
+                attributes: ['quiz_score']
+            });
+
+            if (quizScores.length > 0) {
+                finalScore = quizScores.reduce((sum, progress) => sum + (progress.quiz_score || 0), 0) / quizScores.length;
+            }
+
+            // Check if passing score is met
+            if (finalScore < certificateSettings.passingScore) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Minimum passing score not achieved',
+                    details: {
+                        requiredScore: certificateSettings.passingScore,
+                        achievedScore: finalScore
+                    }
+                });
+            }
+        }
+
+        // Calculate completion time
+        const completionTimes = await UserProgress.findAll({
+            where: {
+                user_id: userId,
+                lesson_id: { [Op.in]: lessonIds },
+                status: 'completed',
+                time_spent_seconds: { [Op.not]: null }
+            },
+            attributes: ['time_spent_seconds']
+        });
+
+        const completionTime = completionTimes.reduce((sum, progress) => sum + (progress.time_spent_seconds || 0), 0);
+
+        // Generate unique certificate UID and verification code
         const certificateUid = uuidv4();
+        const verificationCode = `CERT-${courseId}-${userId}-${Date.now()}`;
 
         // Create certificate
         const certificate = await Certificate.create({
             user_id: userId,
             course_id: courseId,
-            certificate_uid: certificateUid
+            certificate_uid: certificateUid,
+            verification_code: verificationCode,
+            valid_until: certificateSettings.validityPeriod ? 
+                new Date(Date.now() + (certificateSettings.validityPeriod * 24 * 60 * 60 * 1000)) : null,
+            settings: JSON.stringify(certificateSettings),
+            final_score: finalScore,
+            completion_time: Math.round(completionTime / 60) // Convert to minutes
         });
 
         // Get user details for response
@@ -215,7 +303,11 @@ const generateCertificate = async (req, res) => {
         const formattedCertificate = {
             id: certificate.id,
             certificateUid: certificate.certificate_uid,
+            verificationCode: certificate.verification_code,
             issuedAt: certificate.issued_at,
+            validUntil: certificate.valid_until,
+            finalScore: certificate.final_score,
+            completionTime: certificate.completion_time,
             user: {
                 name: user.name,
                 email: user.email
@@ -314,6 +406,15 @@ const verifyCertificate = async (req, res) => {
 const downloadCertificatePDF = async (req, res) => {
     try {
         const { id } = req.params;
+        
+        // Handle super admin case - they shouldn't have certificates
+        if (req.user.standalone && req.user.role === 'super_admin') {
+            return res.status(404).json({
+                success: false,
+                message: 'Certificate not found'
+            });
+        }
+        
         const userId = req.user.id;
 
         const certificate = await Certificate.findOne({

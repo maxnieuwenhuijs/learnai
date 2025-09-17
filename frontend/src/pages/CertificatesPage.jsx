@@ -41,13 +41,16 @@ export function CertificatesPage() {
       const transformedCertificates = response.certificates?.map(cert => ({
         id: cert.id,
         courseTitle: cert.course?.title || 'Unknown Course',
+        courseDescription: cert.course?.description || '',
         courseDuration: cert.course?.duration || 'N/A',
-        issuedAt: cert.issued_date,
-        certificateUid: cert.certificate_id,
-        score: cert.score || 85, // Default score if not provided
-        validUntil: cert.expiry_date,
-        status: cert.status,
-        downloadUrl: `/api/certificates/${cert.certificate_id}/download`
+        issuedAt: cert.issuedAt,
+        certificateUid: cert.certificateUid,
+        verificationCode: cert.verificationCode,
+        score: cert.finalScore || 85, // Default score if not provided
+        validUntil: cert.validUntil,
+        status: cert.status || 'active',
+        completionTime: cert.completionTime,
+        downloadUrl: `/api/certificates/${cert.id}/download`
       })) || [];
       
       setCertificates(transformedCertificates);
@@ -62,7 +65,7 @@ export function CertificatesPage() {
 
   const handleDownload = async (certificate) => {
     try {
-      await downloadCertificatePDF(certificate.certificateUid);
+      await downloadCertificatePDF(certificate.id);
     } catch (error) {
       console.error('Error downloading certificate:', error);
       alert('Failed to download certificate. Please try again.');
@@ -280,11 +283,29 @@ export function CertificatesPage() {
                       </div>
                     </div>
 
+                    {/* Additional Details */}
+                    {certificate.completionTime && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Clock className="w-4 h-4" />
+                        <span>Completion Time: {certificate.completionTime} minutes</span>
+                      </div>
+                    )}
+
                     {/* Valid Until */}
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <CheckCircle className="w-4 h-4" />
-                      <span>Valid until: {formatDate(certificate.validUntil)}</span>
-                    </div>
+                    {certificate.validUntil && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <CheckCircle className="w-4 h-4" />
+                        <span>Valid until: {formatDate(certificate.validUntil)}</span>
+                      </div>
+                    )}
+
+                    {/* Verification Code */}
+                    {certificate.verificationCode && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <FileText className="w-4 h-4" />
+                        <span>Code: {certificate.verificationCode}</span>
+                      </div>
+                    )}
 
                     <Separator />
 

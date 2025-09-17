@@ -4,7 +4,7 @@ export const reportsApi = {
   // Get team progress (for managers)
   getTeamProgress: async () => {
     const response = await api.get('/reports/team');
-    return response.data.data || [];
+    return response.data;
   },
 
   // Get compliance report
@@ -75,5 +75,11 @@ export const reportsApi = {
   getTimeSeriesData: async (metric, params = {}) => {
     const response = await api.get(`/reports/timeseries/${metric}`, { params });
     return response.data.data || [];
+  },
+
+  // Get dashboard statistics for admin
+  getDashboardStats: async () => {
+    const response = await api.get('/super-admin/dashboard');
+    return response.data;
   }
 };

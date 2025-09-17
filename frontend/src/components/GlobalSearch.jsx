@@ -73,14 +73,18 @@ export function GlobalSearch() {
 
     setLoading(true);
     try {
-      // This would be replaced with actual API call
-      // const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
-      //   headers: { Authorization: `Bearer ${token}` }
-      // });
-      // const data = await response.json();
+      const response = await api.get(`/search?q=${encodeURIComponent(query)}`);
+      const data = response.data?.results || {};
       
-      // Start with empty search results
-      setResults([]);
+      // Transform results into flat array for display
+      const allResults = [
+        ...(data.courses || []),
+        ...(data.lessons || []),
+        ...(data.users || []),
+        ...(data.companies || [])
+      ];
+      
+      setResults(allResults);
       setSelectedIndex(0);
     } catch (error) {
       console.error('Search error:', error);
