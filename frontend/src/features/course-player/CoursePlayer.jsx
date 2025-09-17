@@ -49,23 +49,23 @@ export function CoursePlayer() {
 
 	const loadCourse = async () => {
 		try {
-			let response;
+			let courseData;
 
 			// Use superadmin endpoint for superadmin users or preview mode
 			if (
 				user?.role === "super_admin" ||
 				window.location.pathname.includes("/course-preview/")
 			) {
-				response = await api.get(`/super-admin/courses/${courseId}`);
+				const response = await api.get(`/super-admin/courses/${courseId}`);
+				courseData = response.data?.course;
 			} else {
-				response = await coursesApi.getCourseDetails(courseId);
+				// coursesApi.getCourseDetails already returns the course data directly
+				courseData = await coursesApi.getCourseDetails(courseId);
 			}
 
-			// Check if response has the expected structure
-			// Handle both direct response and axios response format
-			const courseData = response.course || response.data?.course;
+			// Check if course data exists
 			if (!courseData) {
-				console.error("Invalid course response:", response);
+				console.error("Course not found or access denied");
 				setCourse(null);
 				return;
 			}
