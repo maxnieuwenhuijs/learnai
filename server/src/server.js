@@ -146,6 +146,7 @@ app.use('/api/progress', progressRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/prompts', promptsRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/analytics', require('./api/routes/analytics.routes'));
 
 // Super Admin Routes
 if (superAdminRoutes) {

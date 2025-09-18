@@ -153,17 +153,17 @@ const CalendarEvent = sequelize.define('CalendarEvent', {
 });
 
 // Instance method to check if event is happening now
-CalendarEvent.prototype.isHappeningNow = function() {
+CalendarEvent.prototype.isHappeningNow = function () {
     const now = new Date();
     return now >= this.start_date && now <= this.end_date;
 };
 
 // Class method to get upcoming events
-CalendarEvent.getUpcomingEvents = async function(userId, days = 7) {
+CalendarEvent.getUpcomingEvents = async function (userId, days = 7) {
     const startDate = new Date();
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + days);
-    
+
     return await this.findAll({
         where: {
             user_id: userId,
@@ -177,7 +177,7 @@ CalendarEvent.getUpcomingEvents = async function(userId, days = 7) {
 };
 
 // Class method to get events for a specific date range
-CalendarEvent.getEventsInRange = async function(userId, startDate, endDate) {
+CalendarEvent.getEventsInRange = async function (userId, startDate, endDate) {
     return await this.findAll({
         where: {
             user_id: userId,

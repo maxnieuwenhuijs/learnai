@@ -83,15 +83,9 @@ export function DashboardLayout({ children }) {
 			roles: ["super_admin"],
 		},
 		{
-			title: "Prompt Analytics",
+			title: "Global Prompt Library",
 			icon: MessageSquare,
 			path: "/admin/super-admin/prompts",
-			roles: ["super_admin"],
-		},
-		{
-			title: "Manage Prompts",
-			icon: Settings,
-			path: "/admin/super-admin/manage-prompts",
 			roles: ["super_admin"],
 		},
 		{
@@ -296,10 +290,12 @@ export function DashboardLayout({ children }) {
 						return (
 							<div
 								key={item.path}
-								onClick={() => checkUnsavedChanges(() => {
-									navigate(item.path);
-									setMobileMenuOpen(false);
-								})}
+								onClick={() =>
+									checkUnsavedChanges(() => {
+										navigate(item.path);
+										setMobileMenuOpen(false);
+									})
+								}
 								className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all cursor-pointer ${
 									isActive
 										? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"

@@ -101,16 +101,19 @@ export function SuperAdminPromptsPage() {
 
 	const loadPrompts = async () => {
 		try {
-			const filters = {};
+			const params = new URLSearchParams();
 			if (selectedCategory !== "all") {
-				filters.category_id = selectedCategory;
+				params.append('category_id', selectedCategory);
 			}
 			if (searchTerm) {
-				filters.search = searchTerm;
+				params.append('search', searchTerm);
+			}
+			if (selectedCompany !== "all") {
+				params.append('company_id', selectedCompany);
 			}
 
-			const res = await promptsApi.getPrompts(filters);
-			setPrompts(res.data?.prompts || []);
+			const res = await api.get(`/super-admin/prompts?${params.toString()}`);
+			setPrompts(res.data?.data?.prompts || []);
 		} catch (error) {
 			console.error("Error loading prompts:", error);
 		}
@@ -532,16 +535,46 @@ export function SuperAdminPromptsPage() {
 										</CardTitle>
 									</CardHeader>
 									<CardContent>
-										<div className='text-center py-8'>
-											<MessageSquare className='h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4' />
-											<p className='text-gray-500 dark:text-gray-400'>
-												Company prompts will be displayed here
-											</p>
-											<Button variant='outline' className='mt-4'>
-												<Eye className='h-4 w-4 mr-2' />
-												View Company Prompts
-											</Button>
-										</div>
+										{company.prompts && company.prompts.length > 0 ? (
+											<div className='space-y-3'>
+												{company.prompts.map((prompt) => (
+													<div
+														key={prompt.id}
+														className='flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors'>
+														<div className='flex-1 min-w-0'>
+															<h4 className='font-medium text-gray-900 dark:text-gray-100 truncate'>
+																{prompt.title}
+															</h4>
+															<div className='flex items-center gap-2 mt-1'>
+																<Badge variant='outline' className='text-xs'>
+																	{prompt.status}
+																</Badge>
+																<span className='text-xs text-gray-500 dark:text-gray-400'>
+																	{prompt.created_at
+																		? formatDateTime(prompt.created_at)
+																		: "Recently"}
+																</span>
+															</div>
+														</div>
+														<div className='flex items-center gap-2 ml-4'>
+															<Button variant='ghost' size='sm'>
+																<Eye className='h-4 w-4' />
+															</Button>
+															<Button variant='ghost' size='sm'>
+																<Edit3 className='h-4 w-4' />
+															</Button>
+														</div>
+													</div>
+												))}
+											</div>
+										) : (
+											<div className='text-center py-8'>
+												<MessageSquare className='h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4' />
+												<p className='text-gray-500 dark:text-gray-400'>
+													No prompts found for this company
+												</p>
+											</div>
+										)}
 									</CardContent>
 								</Card>
 							))}

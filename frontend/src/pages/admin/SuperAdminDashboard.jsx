@@ -864,13 +864,7 @@ export function SuperAdminDashboard() {
 							<div className='flex gap-2'>
 								<Button onClick={() => navigate("/admin/super-admin/prompts")}>
 									<MessageSquare className='h-4 w-4 mr-2' />
-									Prompt Analytics
-								</Button>
-								<Button
-									variant='outline'
-									onClick={() => navigate("/admin/super-admin/manage-prompts")}>
-									<Settings className='h-4 w-4 mr-2' />
-									Manage Prompts
+									Global Prompt Library
 								</Button>
 							</div>
 						</div>

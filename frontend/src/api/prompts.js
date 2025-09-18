@@ -62,6 +62,22 @@ export const promptsApi = {
     return response;
   },
 
+  // Version Management
+  getPromptVersions: async (id) => {
+    const response = await api.get(`/prompts/${id}/versions`);
+    return response;
+  },
+  
+  getPromptVersion: async (id, versionId) => {
+    const response = await api.get(`/prompts/${id}/versions/${versionId}`);
+    return response;
+  },
+  
+  restorePromptVersion: async (id, versionId) => {
+    const response = await api.post(`/prompts/${id}/versions/${versionId}/restore`);
+    return response;
+  },
+
   // Search and filtering helpers
   searchPrompts: async (searchTerm, filters = {}) => {
     const params = {

@@ -44,6 +44,7 @@ const PromptUsage = sequelize.define('PromptUsage', {
     },
     used_at: {
         type: DataTypes.DATE,
+        allowNull: true,
         defaultValue: DataTypes.NOW
     }
 }, {

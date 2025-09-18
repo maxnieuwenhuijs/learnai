@@ -887,18 +887,72 @@ const getDashboardStats = async (req, res) => {
 // Super Admin Prompt Management
 const getAllPrompts = async (req, res) => {
     try {
-        const { page = 1, limit = 20 } = req.query;
+        const { page = 1, limit = 20, status = 'all', category_id, search, company_id } = req.query;
+        const offset = (page - 1) * limit;
 
-        // Return default/mock data since prompt tables don't exist yet
+        // Build where clause for filtering
+        let where = {};
+        if (status && status !== 'all') {
+            where.status = status;
+        } else {
+            where.status = { [Op.in]: ['approved', 'draft', 'pending_review', 'rejected'] };
+        }
+
+        if (category_id) {
+            where.category_id = category_id;
+        }
+
+        if (search) {
+            where[Op.or] = [
+                { title: { [Op.like]: `%${search}%` } },
+                { description: { [Op.like]: `%${search}%` } }
+            ];
+        }
+
+        if (company_id) {
+            where.company_id = company_id;
+        }
+
+        const { count, rows: prompts } = await Prompt.findAndCountAll({
+            where,
+            include: [
+                {
+                    model: PromptCategory,
+                    as: 'category',
+                    attributes: ['id', 'name', 'color', 'icon']
+                },
+                {
+                    model: User,
+                    as: 'creator',
+                    attributes: ['id', 'name', 'email']
+                },
+                {
+                    model: Company,
+                    as: 'company',
+                    attributes: ['id', 'name'],
+                    required: false
+                },
+                {
+                    model: Department,
+                    as: 'department',
+                    attributes: ['id', 'name'],
+                    required: false
+                }
+            ],
+            order: [['updated_at', 'DESC']],
+            limit: parseInt(limit),
+            offset: offset
+        });
+
         res.json({
             success: true,
             data: {
-                prompts: [],
+                prompts,
                 pagination: {
-                    total: 0,
+                    total: count,
                     page: parseInt(page),
                     limit: parseInt(limit),
-                    pages: 0
+                    pages: Math.ceil(count / limit)
                 }
             }
         });
@@ -914,18 +968,86 @@ const getAllPrompts = async (req, res) => {
 
 const getPromptAnalytics = async (req, res) => {
     try {
-        // Return default/mock data since prompt tables don't exist yet
+        // Get real analytics data
+        const totalPrompts = await Prompt.count();
+        const totalCategories = await PromptCategory.count();
+
+        // Get prompts by status
+        const statusCounts = await Prompt.findAll({
+            attributes: [
+                'status',
+                [Prompt.sequelize.fn('COUNT', '*'), 'count']
+            ],
+            group: ['status'],
+            raw: true
+        });
+
+        // Get company-specific vs global prompts
+        const companySpecificPrompts = await Prompt.count({
+            where: { company_id: { [Op.ne]: null } }
+        });
+        const globalPrompts = await Prompt.count({
+            where: { company_id: null }
+        });
+
+        // Get top categories by prompt count - simplified approach
+        const topCategories = await PromptCategory.findAll({
+            attributes: ['id', 'name', 'color', 'icon'],
+            limit: 10
+        });
+
+        // Add prompt counts manually
+        for (let category of topCategories) {
+            const promptCount = await Prompt.count({
+                where: { category_id: category.id }
+            });
+            category.dataValues.prompt_count = promptCount;
+        }
+
+        // Sort by prompt count
+        topCategories.sort((a, b) => b.dataValues.prompt_count - a.dataValues.prompt_count);
+
+        // Get recent prompts
+        const recentPrompts = await Prompt.findAll({
+            attributes: ['id', 'title', 'status', 'created_at'],
+            include: [{
+                model: User,
+                as: 'creator',
+                attributes: ['name', 'email']
+            }, {
+                model: Company,
+                as: 'company',
+                attributes: ['name'],
+                required: false
+            }],
+            order: [['created_at', 'DESC']],
+            limit: 10
+        });
+
+        // Get companies with prompts count
+        const companiesWithPrompts = await Company.count({
+            include: [{
+                model: Prompt,
+                as: 'prompts',
+                required: true
+            }]
+        });
+
         res.json({
             success: true,
             data: {
-                totalPrompts: 0,
-                totalCategories: 0,
-                totalUsage: 0,
-                companiesWithPrompts: 0,
-                globalPrompts: 0,
-                companySpecificPrompts: 0,
-                topCategories: [],
-                recentPrompts: []
+                totalPrompts,
+                totalCategories,
+                totalUsage: 0, // Will be implemented when usage tracking is added
+                companiesWithPrompts,
+                globalPrompts,
+                companySpecificPrompts,
+                statusCounts: statusCounts.reduce((acc, item) => {
+                    acc[item.status] = parseInt(item.count);
+                    return acc;
+                }, {}),
+                topCategories,
+                recentPrompts
             }
         });
     } catch (error) {
@@ -940,27 +1062,57 @@ const getPromptAnalytics = async (req, res) => {
 
 const getPromptsByCompany = async (req, res) => {
     try {
-        // Get companies with basic info
+        // Get companies with prompt counts
         const companies = await Company.findAll({
-            attributes: ['id', 'name']
+            attributes: ['id', 'name'],
+            include: [{
+                model: Prompt,
+                as: 'prompts',
+                attributes: ['id', 'title', 'status', 'created_at'],
+                required: false
+            }]
         });
 
-        // Add companies with default prompt data
-        const companiesWithStats = companies.map(company => ({
+        // Process companies with real prompt data
+        const companiesWithStats = companies.map(company => {
+            const prompts = company.prompts || [];
+            return {
             id: company.id,
             name: company.name,
-            prompt_count: 0,
-            usage_count: 0,
-            prompts: []
-        }));
+                prompt_count: prompts.length,
+                usage_count: 0, // Will be implemented when usage tracking is added
+                prompts: prompts.map(prompt => ({
+                    id: prompt.id,
+                    title: prompt.title,
+                    status: prompt.status,
+                    created_at: prompt.created_at
+                }))
+            };
+        });
 
-        // Add global templates
+        // Add global templates (prompts with no company)
+        const globalPrompts = await Prompt.findAll({
+            where: { company_id: null },
+            attributes: ['id', 'title', 'status', 'created_at'],
+            include: [{
+                model: User,
+                as: 'creator',
+                attributes: ['name', 'email']
+            }]
+        });
+
         companiesWithStats.unshift({
             id: 0,
             name: 'Global Templates',
-            prompt_count: 0,
+            prompt_count: globalPrompts.length,
             usage_count: 0,
-            prompts: []
+            prompts: globalPrompts.map(prompt => ({
+                id: prompt.id,
+                title: prompt.title,
+                status: prompt.status,
+                created_at: prompt.created_at,
+                creator: prompt.creator
+            }))
         });
 
         res.json({
@@ -979,10 +1131,34 @@ const getPromptsByCompany = async (req, res) => {
 
 const deletePrompt = async (req, res) => {
     try {
-        // Since prompt tables don't exist yet, return 404
-        res.status(404).json({
+        const { id } = req.params;
+
+        const prompt = await Prompt.findByPk(id);
+        if (!prompt) {
+            return res.status(404).json({
             success: false,
             message: 'Prompt not found'
+            });
+        }
+
+        await prompt.destroy();
+
+        // Log prompt deletion
+        await auditLogger.log({
+            userId: req.user?.id || 1,
+            companyId: prompt.company_id,
+            action: 'prompt_deleted',
+            entityType: 'prompt',
+            entityId: id,
+            oldValues: { title: prompt.title, status: prompt.status },
+            severity: 'high',
+            description: `Deleted prompt: ${prompt.title}`,
+            req
+        });
+
+        res.json({
+            success: true,
+            message: 'Prompt deleted successfully'
         });
     } catch (error) {
         console.error('Error deleting prompt:', error);
@@ -996,6 +1172,7 @@ const deletePrompt = async (req, res) => {
 
 const updatePromptStatus = async (req, res) => {
     try {
+        const { id } = req.params;
         const { status } = req.body;
 
         const validStatuses = ['draft', 'pending_review', 'approved', 'rejected'];
@@ -1006,10 +1183,39 @@ const updatePromptStatus = async (req, res) => {
             });
         }
 
-        // Since prompt tables don't exist yet, return 404
-        res.status(404).json({
+        const prompt = await Prompt.findByPk(id);
+        if (!prompt) {
+            return res.status(404).json({
             success: false,
             message: 'Prompt not found'
+            });
+        }
+
+        const oldStatus = prompt.status;
+        await prompt.update({ status });
+
+        // Log status update
+        await auditLogger.log({
+            userId: req.user?.id || 1,
+            companyId: prompt.company_id,
+            action: 'prompt_status_updated',
+            entityType: 'prompt',
+            entityId: id,
+            oldValues: { status: oldStatus },
+            newValues: { status },
+            severity: 'medium',
+            description: `Updated prompt status from ${oldStatus} to ${status}`,
+            req
+        });
+
+        res.json({
+            success: true,
+            message: 'Prompt status updated successfully',
+            prompt: {
+                id: prompt.id,
+                title: prompt.title,
+                status: prompt.status
+            }
         });
     } catch (error) {
         console.error('Error updating prompt status:', error);
