@@ -76,10 +76,36 @@ export function DashboardLayout({ children }) {
 			path: "/admin/super-admin/companies",
 			roles: ["super_admin"],
 		},
+		// Admin Only
+		{
+			title: "Admin Dashboard",
+			icon: LayoutDashboard,
+			path: "/admin/dashboard",
+			roles: ["admin"],
+		},
+		{
+			title: "Company Users",
+			icon: Users,
+			path: "/admin/users",
+			roles: ["admin"],
+		},
+		{
+			title: "Company Prompts",
+			icon: MessageSquare,
+			path: "/admin/prompts",
+			roles: ["admin"],
+		},
+		{
+			title: "Company Courses",
+			icon: BookOpen,
+			path: "/admin/courses",
+			roles: ["admin"],
+		},
+		// Super Admin Only
 		{
 			title: "Global Courses",
 			icon: Database,
-			path: "/admin/courses",
+			path: "/admin/super-admin/courses",
 			roles: ["super_admin"],
 		},
 		{

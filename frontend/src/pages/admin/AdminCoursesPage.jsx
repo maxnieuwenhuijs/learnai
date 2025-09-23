@@ -23,10 +23,10 @@ import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
+	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-	DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -86,9 +86,21 @@ function AdminCoursesPage() {
 		estimated_duration: 60,
 		is_global: false,
 	});
+	const [showAssignDialog, setShowAssignDialog] = useState(false);
+	const [courseToAssign, setCourseToAssign] = useState(null);
+	const [assignFormData, setAssignFormData] = useState({
+		userIds: [],
+		departmentIds: []
+	});
+	const [teamMembers, setTeamMembers] = useState([]);
+	const [departments, setDepartments] = useState([]);
+	const [showStatsDialog, setShowStatsDialog] = useState(false);
+	const [courseStats, setCourseStats] = useState(null);
 
 	useEffect(() => {
 		fetchCourses();
+		fetchTeamMembers();
+		fetchDepartments();
 	}, [currentPage, searchTerm, statusFilter]);
 
 	const fetchCourses = async () => {
@@ -101,18 +113,100 @@ function AdminCoursesPage() {
 				status: statusFilter,
 			});
 
-			const response = await api.get(`/super-admin/courses?${params}`);
-			if (response.data) {
-				setCourses(response.data.courses || []);
-				setTotalPages(response.data.totalPages || 1);
+			console.log('🔍 Loading courses with params:', params.toString());
+			const response = await api.get(`/admin/courses?${params}`);
+			console.log('📥 Courses response:', response.data);
+			console.log('📥 Courses response.data:', response.data.data);
+			console.log('📥 Courses response.data.courses:', response.data.data?.courses);
+			
+			if (response.data && response.data.success) {
+				const coursesData = response.data.data;
+				console.log('✅ Courses loaded successfully:', coursesData?.courses);
+				console.log('✅ Total courses:', coursesData?.totalCourses);
+				console.log('✅ Total pages:', coursesData?.totalPages);
+				setCourses(coursesData?.courses || []);
+				setTotalPages(coursesData?.totalPages || 1);
+				console.log('📊 Courses state updated:', coursesData?.courses?.length || 0, 'courses');
+			} else {
+				console.log('❌ API returned no data or success=false');
 			}
 		} catch (error) {
-			console.error("Error fetching courses:", error);
+			console.error("❌ Error fetching courses:", error);
+			console.error("Error details:", error.response?.data);
 			// Start completely empty
 			setCourses([]);
 			setTotalPages(1);
 		} finally {
 			setLoading(false);
+			console.log('🔄 Loading state set to false');
+		}
+	};
+
+	const fetchTeamMembers = async () => {
+		try {
+			console.log('🔍 Fetching team members...');
+			const response = await api.get('/admin/users');
+			console.log('📥 Team members response:', response.data);
+			console.log('📥 Team members response.data:', response.data?.data);
+			console.log('📥 Team members response.data.data:', response.data?.data?.data);
+			if (response.data && response.data.success) {
+				const usersData = response.data.data.users || response.data.data;
+				console.log('✅ Team members loaded:', usersData);
+				console.log('✅ Team members type:', typeof usersData);
+				console.log('✅ Team members is array:', Array.isArray(usersData));
+				setTeamMembers(usersData || []);
+			} else {
+				console.log('❌ Team members API returned no data or success=false');
+				setTeamMembers([]);
+			}
+		} catch (error) {
+			console.error('❌ Error fetching team members:', error);
+			setTeamMembers([]);
+		}
+	};
+
+	const fetchDepartments = async () => {
+		try {
+			console.log('🔍 Fetching departments...');
+			const response = await api.get('/admin/departments');
+			console.log('📥 Departments response:', response.data);
+			if (response.data && response.data.success) {
+				const departmentsData = response.data.data;
+				console.log('✅ Departments loaded:', departmentsData);
+				console.log('✅ Departments type:', typeof departmentsData);
+				console.log('✅ Departments is array:', Array.isArray(departmentsData));
+				setDepartments(departmentsData || []);
+			} else {
+				console.log('❌ Departments API returned no data or success=false');
+				setDepartments([]);
+			}
+		} catch (error) {
+			console.error('❌ Error fetching departments:', error);
+			setDepartments([]);
+		}
+	};
+
+	const handleAssignCourse = (course) => {
+		setCourseToAssign(course);
+		setAssignFormData({ userIds: [], departmentIds: [] });
+		setShowAssignDialog(true);
+	};
+
+	const handleAssignSubmit = async () => {
+		try {
+			await api.post(`/admin/courses/${courseToAssign.id}/assign`, assignFormData);
+			toast({
+				title: "Success",
+				description: "Course assigned successfully",
+			});
+			setShowAssignDialog(false);
+			fetchCourses();
+		} catch (error) {
+			console.error('Error assigning course:', error);
+			toast({
+				title: "Error",
+				description: "Failed to assign course",
+			});
 		}
 	};
 
@@ -132,7 +226,7 @@ function AdminCoursesPage() {
 				courseData.company_id = formData.company_id;
 			}
 
-			const response = await api.post("/super-admin/courses", courseData);
+			const response = await api.post("/admin/courses", courseData);
 			if (response.data) {
 				toast({
 					title: "Success",
@@ -174,7 +268,7 @@ function AdminCoursesPage() {
 	const handleEditCourse = async () => {
 		try {
 			const response = await api.put(
-				`/super-admin/courses/${selectedCourse.id}`,
+				`/admin/courses/${selectedCourse.id}`,
 				formData
 			);
 			if (response.data) {
@@ -205,7 +299,7 @@ function AdminCoursesPage() {
 		}
 
 		try {
-			await api.delete(`/super-admin/courses/${courseId}`);
+			await api.delete(`/admin/courses/${courseId}`);
 			toast({
 				title: "Success",
 				description: "Course deleted successfully",
@@ -222,7 +316,7 @@ function AdminCoursesPage() {
 
 	const handlePublishToggle = async (courseId, isPublished) => {
 		try {
-			await api.patch(`/super-admin/courses/${courseId}/publish`, {
+			await api.patch(`/admin/courses/${courseId}/publish`, {
 				is_published: !isPublished,
 			});
 			toast({
@@ -259,7 +353,7 @@ function AdminCoursesPage() {
 	const handleCopyCourse = async () => {
 		try {
 			const response = await api.post(
-				`/super-admin/courses/${courseToCopy.id}/duplicate`,
+				`/admin/courses/${courseToCopy.id}/duplicate`,
 				copyFormData
 			);
 			toast({
@@ -585,6 +679,7 @@ function AdminCoursesPage() {
 									</TableRow>
 								</TableHeader>
 								<TableBody>
+									{console.log('🎨 Rendering courses:', courses.length, 'courses')}
 									{courses.map((course) => (
 										<TableRow key={course.id}>
 											<TableCell>
@@ -633,6 +728,13 @@ function AdminCoursesPage() {
 											</TableCell>
 											<TableCell className='text-right'>
 												<div className='flex justify-end gap-2'>
+													<Button
+														size='sm'
+														variant='ghost'
+														onClick={() => handleAssignCourse(course)}
+														title='Assign Course to Team'>
+														<Users className='h-4 w-4' />
+													</Button>
 													<Button
 														size='sm'
 														variant='ghost'
@@ -815,6 +917,105 @@ function AdminCoursesPage() {
 							Cancel
 						</Button>
 						<Button onClick={handleCopyCourse}>Copy Course</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			{/* Assign Course Dialog */}
+			<Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
+				<DialogContent className='sm:max-w-[600px] max-w-[90vw]'>
+					<DialogHeader>
+						<DialogTitle>Assign Course to Team</DialogTitle>
+						<DialogDescription>
+							Assign "{courseToAssign?.title}" to team members or departments
+						</DialogDescription>
+					</DialogHeader>
+					<div className='space-y-6'>
+						{/* Team Members Selection */}
+						<div className='space-y-3'>
+							<Label className='text-base font-medium'>Team Members</Label>
+							<div className='max-h-40 overflow-y-auto border rounded-md p-3 space-y-2'>
+								{Array.isArray(teamMembers) && teamMembers.length > 0 ? teamMembers.map((member) => (
+									<div key={member.id} className='flex items-center space-x-2'>
+										<input
+											type='checkbox'
+											id={`user-${member.id}`}
+											checked={assignFormData.userIds.includes(member.id)}
+											onChange={(e) => {
+												if (e.target.checked) {
+													setAssignFormData({
+														...assignFormData,
+														userIds: [...assignFormData.userIds, member.id]
+													});
+												} else {
+													setAssignFormData({
+														...assignFormData,
+														userIds: assignFormData.userIds.filter(id => id !== member.id)
+													});
+												}
+											}}
+											className='rounded'
+										/>
+										<Label htmlFor={`user-${member.id}`} className='text-sm'>
+											{member.first_name} {member.last_name} ({member.email})
+										</Label>
+									</div>
+								)) : (
+									<div className='text-sm text-muted-foreground text-center py-4'>
+										No team members found
+									</div>
+								)}
+							</div>
+						</div>
+
+						{/* Departments Selection */}
+						<div className='space-y-3'>
+							<Label className='text-base font-medium'>Departments</Label>
+							<div className='max-h-40 overflow-y-auto border rounded-md p-3 space-y-2'>
+								{Array.isArray(departments) && departments.length > 0 ? departments.map((dept) => (
+									<div key={dept.id} className='flex items-center space-x-2'>
+										<input
+											type='checkbox'
+											id={`dept-${dept.id}`}
+											checked={assignFormData.departmentIds.includes(dept.id)}
+											onChange={(e) => {
+												if (e.target.checked) {
+													setAssignFormData({
+														...assignFormData,
+														departmentIds: [...assignFormData.departmentIds, dept.id]
+													});
+												} else {
+													setAssignFormData({
+														...assignFormData,
+														departmentIds: assignFormData.departmentIds.filter(id => id !== dept.id)
+													});
+												}
+											}}
+											className='rounded'
+										/>
+										<Label htmlFor={`dept-${dept.id}`} className='text-sm'>
+											{dept.name}
+										</Label>
+									</div>
+								)) : (
+									<div className='text-sm text-muted-foreground text-center py-4'>
+										No departments found
+									</div>
+								)}
+							</div>
+						</div>
+					</div>
+					<DialogFooter>
+						<Button
+							variant='outline'
+							onClick={() => setShowAssignDialog(false)}>
+							Cancel
+						</Button>
+						<Button 
+							onClick={handleAssignSubmit}
+							disabled={assignFormData.userIds.length === 0 && assignFormData.departmentIds.length === 0}>
+							Assign Course
+						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>

@@ -101,6 +101,15 @@ try {
     console.error('❌ Failed to load super admin routes:', err.message);
 }
 
+// Try to import admin routes
+let adminRoutes;
+try {
+    adminRoutes = require('./api/routes/admin.routes');
+    console.log('✅ Admin routes loaded');
+} catch (err) {
+    console.error('❌ Failed to load admin routes:', err.message);
+}
+
 // Try to import optional routes with error handling
 let certificatesRoutes, teamRoutes, notificationsRoutes, calendarRoutes, emailRoutes;
 try {
@@ -152,6 +161,12 @@ app.use('/api/analytics', require('./api/routes/analytics.routes'));
 if (superAdminRoutes) {
     app.use('/api/super-admin', superAdminRoutes);
     console.log('📌 Super Admin routes registered at /api/super-admin');
+}
+
+// Admin Routes
+if (adminRoutes) {
+    app.use('/api/admin', adminRoutes);
+    console.log('📌 Admin routes registered at /api/admin');
 }
 
 if (certificatesRoutes) {

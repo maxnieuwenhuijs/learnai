@@ -27,6 +27,9 @@ import CourseBuilderPage from "@/pages/admin/CourseBuilderPage";
 import ModuleManagerPage from "@/pages/admin/ModuleManagerPage";
 import QuizBuilderPage from "@/pages/admin/QuizBuilderPage";
 import ContentUploadPage from "@/pages/admin/ContentUploadPage";
+import { AdminDashboard } from "@/pages/admin/AdminDashboard";
+import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
+import { AdminPromptsPage } from "@/pages/admin/AdminPromptsPage";
 
 // Super Admin Pages
 import SuperAdminDashboard from "@/pages/admin/SuperAdminDashboard";
@@ -64,6 +67,10 @@ function App() {
 								<Route path='/settings' element={<SettingsPage />} />
 
 								{/* Admin Routes - Protected with role check */}
+								<Route path='/admin' element={<AdminDashboard />} />
+								<Route path='/admin/dashboard' element={<AdminDashboard />} />
+								<Route path='/admin/users' element={<AdminUsersPage />} />
+								<Route path='/admin/prompts' element={<AdminPromptsPage />} />
 								<Route path='/admin/courses' element={<AdminCoursesPage />} />
 								<Route
 									path='/admin/course-builder/:courseId'

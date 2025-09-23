@@ -324,7 +324,7 @@ export function PromptsPage() {
 								className={
 									promptType === "personal" ? "bg-gray-900 text-white" : ""
 								}>
-								Mijn Prompts
+								Persoonlijke Prompts
 							</Button>
 							<Button
 								variant={promptType === "company" ? "default" : "outline"}
@@ -471,7 +471,7 @@ export function PromptsPage() {
 																<Badge
 																	variant='secondary'
 																	className='text-xs bg-blue-100 text-blue-700 border-blue-200'>
-																	Mijn Prompt
+																	Persoonlijke Prompt
 																</Badge>
 															) : (
 																<Badge

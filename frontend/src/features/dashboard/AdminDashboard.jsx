@@ -43,20 +43,28 @@ export function AdminDashboard() {
     try {
       setLoading(true);
       
-      // Get dashboard stats from super admin API
-      const data = await reportsApi.getDashboardStats();
+      // Get dashboard stats from admin API
+      const response = await fetch('/api/admin/dashboard', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
       
-      if (data.success && data.data) {
-        setStats({
-          totalUsers: data.data.totalUsers || 0,
-          activeCourses: data.data.totalCourses || 0,
-          completionRate: 0, // Will be calculated separately
-          certificates: data.data.totalCertificates || 0,
-          totalPrompts: 0, // Will be added later
-          promptUsage: 0 // Will be added later
-        });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setStats({
+            totalUsers: data.data.totalUsers || 0,
+            activeCourses: data.data.totalCourses || 0,
+            completionRate: 0, // Will be calculated separately
+            certificates: data.data.totalCertificates || 0,
+            totalPrompts: 0, // Will be added later
+            promptUsage: 0 // Will be added later
+          });
+        }
       } else {
-        console.error('Failed to load dashboard stats:', data.message);
+        console.error('Failed to load dashboard stats:', response.statusText);
       }
     } catch (error) {
       console.error('Error loading dashboard stats:', error);

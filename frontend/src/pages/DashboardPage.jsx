@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ParticipantDashboard } from "@/features/dashboard/ParticipantDashboard";
 import { ManagerDashboard } from "@/features/dashboard/ManagerDashboard";
-import { AdminDashboard } from "@/features/dashboard/AdminDashboard";
+import { AdminDashboard as AdminDashboardFeature } from "@/features/dashboard/AdminDashboard";
 
 export function DashboardPage() {
 	const { user } = useAuth();
@@ -14,7 +14,7 @@ export function DashboardPage() {
 			case "manager":
 				return <ManagerDashboard />;
 			case "admin":
-				return <AdminDashboard />;
+				return <AdminDashboardFeature />;
 			case "super_admin":
 				// Super admins should go directly to Platform Admin, not dashboard
 				window.location.href = "/admin/super-admin";
