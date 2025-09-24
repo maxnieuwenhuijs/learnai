@@ -46,6 +46,9 @@ router.get('/reports/courses', adminController.getCourseReports);
 router.get('/reports/users', adminController.getUserReports);
 
 // Company Prompt Management Routes
+// Place categories routes BEFORE /prompts/:id to avoid catching 'categories' as an :id
+router.get('/prompts/categories', adminController.getPromptCategories);
+router.post('/prompts/categories', adminController.createPromptCategory);
 router.get('/prompts', adminController.getCompanyPrompts);
 router.get('/prompts/:id', adminController.getPrompt);
 router.post('/prompts', adminController.createPrompt);
@@ -53,7 +56,12 @@ router.put('/prompts/:id', adminController.updatePrompt);
 router.delete('/prompts/:id', adminController.deletePrompt);
 router.put('/prompts/:id/approve', adminController.approvePrompt);
 router.put('/prompts/:id/reject', adminController.rejectPrompt);
-router.get('/prompts/categories', adminController.getPromptCategories);
-router.post('/prompts/categories', adminController.createPromptCategory);
+
+// User Course Enrollment Routes
+router.post('/enrollments', adminController.enrollUserInCourse);
+router.get('/enrollments', adminController.getUserEnrollments);
+router.put('/enrollments/:enrollmentId', adminController.updateEnrollmentStatus);
+router.delete('/enrollments/:enrollmentId', adminController.unenrollUserFromCourse);
+router.get('/enrollments/statistics', adminController.getEnrollmentStatistics);
 
 module.exports = router;

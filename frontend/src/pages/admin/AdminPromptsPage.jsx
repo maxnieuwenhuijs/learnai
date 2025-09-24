@@ -2,12 +2,14 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import api from "@/api/config";
+import PromptCreator from "@/components/prompts/PromptCreator";
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,17 +32,16 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
-	MessageSquare,
-	Search,
-	Plus,
-	Edit3,
-	Trash2,
-	Tag,
-	Filter,
-	Eye,
-	Copy,
-	Check,
-	X,
+    MessageSquare,
+    Search,
+    Plus,
+    Edit3,
+    Trash2,
+    Tag,
+    Filter,
+    Eye,
+    Check,
+    X,
 } from "lucide-react";
 
 export function AdminPromptsPage() {
@@ -262,7 +263,7 @@ export function AdminPromptsPage() {
 						<CardTitle>Filters</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<div className='flex flex-col sm:flex-row gap-4'>
+                        <div className='flex flex-col sm:flex-row gap-4'>
 							<div className='flex-1'>
 								<div className='relative'>
 									<Search className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
@@ -274,7 +275,7 @@ export function AdminPromptsPage() {
 									/>
 								</div>
 							</div>
-							<Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                            <Select value={selectedCategory || 'all'} onValueChange={(v) => setSelectedCategory(v)}>
 								<SelectTrigger className='w-[180px]'>
 									<SelectValue placeholder='Filter by category' />
 								</SelectTrigger>
@@ -287,7 +288,7 @@ export function AdminPromptsPage() {
 									))}
 								</SelectContent>
 							</Select>
-							<Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                            <Select value={selectedStatus || 'all'} onValueChange={(v) => setSelectedStatus(v)}>
 								<SelectTrigger className='w-[180px]'>
 									<SelectValue placeholder='Filter by status' />
 								</SelectTrigger>
@@ -308,103 +309,89 @@ export function AdminPromptsPage() {
 						<div className='col-span-full flex items-center justify-center h-32'>
 							<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100'></div>
 						</div>
-					) : prompts.length > 0 ? (
-						prompts.map((prompt) => (
-							<Card key={prompt.id} className='hover:shadow-md transition-shadow'>
-								<CardHeader>
-									<div className='flex items-start justify-between'>
-										<div className='flex-1'>
-											<div className='flex items-center gap-2 mb-1'>
-												<CardTitle className='text-lg'>{prompt.title}</CardTitle>
-												<Badge variant="secondary" className='text-xs'>
-													Bedrijf Prompt
-												</Badge>
-											</div>
-											<CardDescription className='mt-1'>
-												{prompt.description || "No description"}
-											</CardDescription>
-										</div>
-										<div className='flex items-center space-x-1'>
-											<Button
-												variant='ghost'
-												size='sm'
-												onClick={() => copyToClipboard(prompt.content)}
-											>
-												<Copy className='h-4 w-4' />
-											</Button>
-											{prompt.status === 'pending_review' && (
-												<>
-													<Button
-														variant='ghost'
-														size='sm'
-														onClick={() => handleApprovePrompt(prompt.id)}
-														title="Approve prompt"
-													>
-														<Check className='h-4 w-4' />
-													</Button>
-													<Button
-														variant='ghost'
-														size='sm'
-														onClick={() => handleRejectPrompt(prompt.id)}
-														title="Reject prompt"
-													>
-														<X className='h-4 w-4' />
-													</Button>
-												</>
-											)}
-											<Button
-												variant='ghost'
-												size='sm'
-												onClick={() => handleEditPrompt(prompt)}
-											>
-												<Edit3 className='h-4 w-4' />
-											</Button>
-											<Button
-												variant='ghost'
-												size='sm'
-												onClick={() => handleDeletePrompt(prompt.id)}
-											>
-												<Trash2 className='h-4 w-4' />
-											</Button>
-										</div>
-									</div>
-								</CardHeader>
-								<CardContent>
-									<div className='space-y-3'>
-										<div className='text-sm text-muted-foreground line-clamp-3'>
+                    ) : prompts.length > 0 ? (
+                        prompts.map((prompt) => (
+                            <Card key={prompt.id} className='border border-gray-200 dark:border-gray-800 rounded-xl hover:shadow-lg hover:-translate-y-[1px] transition-all duration-200'>
+                                <CardHeader className='pb-3'>
+                                    <div className='flex items-start justify-between'>
+                                        <div className='flex-1 min-w-0'>
+                                            <div className='flex items-center gap-2 mb-1'>
+                                                <CardTitle className='text-lg tracking-tight truncate'>{prompt.title}</CardTitle>
+                                            </div>
+                                            <div className='flex items-center gap-2 mb-1'>
+                                                <Badge className='bg-blue-50 text-blue-700 border-blue-200 text-[10px]'>Company</Badge>
+                                                <Badge 
+                                                    variant={prompt.status === 'approved' ? 'default' : prompt.status === 'pending_review' ? 'secondary' : 'outline'}
+                                                    className={`text-[10px] font-medium ${
+                                                        prompt.status === 'approved' ? 'bg-green-100 text-green-800 border-green-200' :
+                                                        prompt.status === 'pending_review' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                                                        prompt.status === 'draft' ? 'bg-gray-100 text-gray-800 border-gray-200' :
+                                                        'bg-gray-100 text-gray-800 border-gray-200'
+                                                    }`}
+                                                >
+                                                    {prompt.status?.replace('_', ' ').toUpperCase()}
+                                                </Badge>
+                                            </div>
+                                            <CardDescription className='mt-0.5 line-clamp-2'>
+                                                {prompt.description || "No description"}
+                                            </CardDescription>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+								<CardContent className='pt-0'>
+                                    <div className='space-y-3'>
+										{/* Content preview */}
+										<div className='text-sm text-muted-foreground line-clamp-3 bg-gray-50 dark:bg-gray-900/40 p-3 rounded-md border border-gray-100 dark:border-gray-800'>
 											{prompt.content}
 										</div>
+										{/* Meta row */}
 										<div className='flex items-center justify-between'>
-											<div className='flex items-center gap-2'>
+											<div className='flex items-center gap-2 flex-wrap'>
 												{prompt.category && (
-													<Badge variant='secondary' className='text-xs'>
-														{prompt.category.name}
-													</Badge>
+													<Badge className='text-xs bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'>{prompt.category.name}</Badge>
 												)}
-												<Badge 
-													variant={prompt.status === 'approved' ? 'default' : prompt.status === 'pending_review' ? 'secondary' : 'outline'}
-													className={`text-xs font-medium ${
-														prompt.status === 'approved' ? 'bg-green-100 text-green-800 border-green-200' :
-														prompt.status === 'pending_review' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
-														prompt.status === 'draft' ? 'bg-gray-100 text-gray-800 border-gray-200' :
-														'bg-gray-100 text-gray-800 border-gray-200'
-													}`}
-												>
-													{prompt.status?.replace('_', ' ').toUpperCase()}
-												</Badge>
 											</div>
+											<div className='text-xs text-muted-foreground'>v{prompt.version || 1}</div>
 										</div>
+										{/* Tags */}
 										{prompt.tags && prompt.tags.length > 0 && (
-											<div className='flex flex-wrap gap-1'>
-												{prompt.tags.map((tag, index) => (
-													<Badge key={index} variant='outline' className='text-xs'>
+											<div className='flex flex-wrap gap-1.5'>
+												{prompt.tags.slice(0, 4).map((tag, index) => (
+													<Badge key={index} variant='outline' className='text-[10px] px-2 py-0.5'>
 														{tag}
 													</Badge>
 												))}
+												{prompt.tags.length > 4 && (
+													<Badge variant='outline' className='text-[10px] px-2 py-0.5'>+{prompt.tags.length - 4}</Badge>
+												)}
 											</div>
 										)}
 									</div>
 								</CardContent>
+                            <CardFooter className='pt-0'>
+                                <div className='w-full flex items-center justify-between'>
+                                    <div className='flex items-center gap-2'>
+                                        {prompt.status === 'pending_review' && (
+                                            <>
+                                                <Button size='sm' className='bg-gray-900 text-white hover:bg-gray-800 font-medium shadow-sm' onClick={() => handleApprovePrompt(prompt.id)}>
+                                                    Approve
+                                                </Button>
+                                                <Button size='sm' className='bg-gray-900 text-white hover:bg-gray-800 font-medium shadow-sm' onClick={() => handleRejectPrompt(prompt.id)}>
+                                                    Reject
+                                                </Button>
+                                            </>
+                                        )}
+                                    </div>
+                                    <div className='flex items-center gap-1'>
+                                        <Button variant='ghost' size='sm' onClick={() => handleEditPrompt(prompt)} title='Edit'>
+                                            <Edit3 className='h-4 w-4' />
+                                        </Button>
+                                        <Button variant='ghost' size='sm' onClick={() => handleDeletePrompt(prompt.id)} title='Delete'>
+                                            <Trash2 className='h-4 w-4' />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </CardFooter>
 							</Card>
 						))
 					) : (
@@ -445,15 +432,15 @@ export function AdminPromptsPage() {
 									onChange={(e) => setPromptFormData({ ...promptFormData, content: e.target.value })}
 									rows={6}
 								/>
-								<Select
-									value={promptFormData.category_id}
-									onValueChange={(value) => setPromptFormData({ ...promptFormData, category_id: value })}
-								>
+                            <Select
+                                value={promptFormData.category_id || 'none'}
+                                onValueChange={(value) => setPromptFormData({ ...promptFormData, category_id: value === 'none' ? '' : value })}
+                            >
 									<SelectTrigger>
 										<SelectValue placeholder='Select category (optional)' />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value=''>No Category</SelectItem>
+                                    <SelectItem value='none'>No Category</SelectItem>
 										{categories.map((category) => (
 											<SelectItem key={category.id} value={category.id.toString()}>
 												{category.name}
@@ -519,111 +506,16 @@ export function AdminPromptsPage() {
 					</div>
 				)}
 
-				{/* Edit Prompt Dialog */}
-				<Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-					<DialogContent className="max-w-2xl">
-						<DialogHeader>
-							<DialogTitle>Bewerk Bedrijf Prompt</DialogTitle>
-							<DialogDescription>
-								Werk de prompt details hieronder bij.
-							</DialogDescription>
-						</DialogHeader>
-						<div className="space-y-4">
-							<div>
-								<Label htmlFor="edit-title">Title</Label>
-								<Input
-									id="edit-title"
-									value={promptFormData.title}
-									onChange={(e) =>
-										setPromptFormData({
-											...promptFormData,
-											title: e.target.value,
-										})
-									}
-									placeholder="Enter prompt title"
-								/>
-							</div>
-							<div>
-								<Label htmlFor="edit-description">Description</Label>
-								<Input
-									id="edit-description"
-									value={promptFormData.description}
-									onChange={(e) =>
-										setPromptFormData({
-											...promptFormData,
-											description: e.target.value,
-										})
-									}
-									placeholder="Enter prompt description"
-								/>
-							</div>
-							<div>
-								<Label htmlFor="edit-category">Category</Label>
-								<Select
-									value={promptFormData.category_id}
-									onValueChange={(value) =>
-										setPromptFormData({
-											...promptFormData,
-											category_id: value,
-										})
-									}
-								>
-									<SelectTrigger>
-										<SelectValue placeholder="Select a category" />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="">No Category</SelectItem>
-										{categories.map((category) => (
-											<SelectItem key={category.id} value={category.id.toString()}>
-												{category.name}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-							</div>
-							<div>
-								<Label htmlFor="edit-tags">Tags (comma-separated)</Label>
-								<Input
-									id="edit-tags"
-									value={promptFormData.tags}
-									onChange={(e) =>
-										setPromptFormData({
-											...promptFormData,
-											tags: e.target.value,
-										})
-									}
-									placeholder="e.g., marketing, sales, support"
-								/>
-							</div>
-							<div>
-								<Label htmlFor="edit-content">Content</Label>
-								<Textarea
-									id="edit-content"
-									value={promptFormData.content}
-									onChange={(e) =>
-										setPromptFormData({
-											...promptFormData,
-											content: e.target.value,
-										})
-									}
-									placeholder="Enter the prompt content"
-									rows={6}
-								/>
-							</div>
-						</div>
-						<DialogFooter>
-							<Button
-								variant="outline"
-								onClick={() => setShowEditDialog(false)}
-							>
-								Cancel
-							</Button>
-							<Button onClick={handleUpdatePrompt}>
-								Update Bedrijf Prompt
-							</Button>
-						</DialogFooter>
-					</DialogContent>
-				</Dialog>
+                {/* Edit Prompt Dialog - reuse unified PromptCreator for admin editing */}
+                <PromptCreator
+                    isOpen={showEditDialog}
+                    onClose={() => setShowEditDialog(false)}
+                    onSave={() => {
+                        setShowEditDialog(false);
+                        loadPrompts();
+                    }}
+                    editPrompt={editingPrompt}
+                />
 			</div>
 		</DashboardLayout>
 	);

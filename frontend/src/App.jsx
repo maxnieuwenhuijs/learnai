@@ -30,6 +30,7 @@ import ContentUploadPage from "@/pages/admin/ContentUploadPage";
 import { AdminDashboard } from "@/pages/admin/AdminDashboard";
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
 import { AdminPromptsPage } from "@/pages/admin/AdminPromptsPage";
+import { EnrollmentManagementPage } from "@/pages/admin/EnrollmentManagementPage";
 
 // Super Admin Pages
 import SuperAdminDashboard from "@/pages/admin/SuperAdminDashboard";
@@ -72,6 +73,7 @@ function App() {
 								<Route path='/admin/users' element={<AdminUsersPage />} />
 								<Route path='/admin/prompts' element={<AdminPromptsPage />} />
 								<Route path='/admin/courses' element={<AdminCoursesPage />} />
+								<Route path='/admin/enrollments' element={<EnrollmentManagementPage />} />
 								<Route
 									path='/admin/course-builder/:courseId'
 									element={<CourseBuilderPage />}

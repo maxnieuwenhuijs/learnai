@@ -86,22 +86,13 @@ function AdminCoursesPage() {
 		estimated_duration: 60,
 		is_global: false,
 	});
-	const [showAssignDialog, setShowAssignDialog] = useState(false);
-	const [courseToAssign, setCourseToAssign] = useState(null);
-	const [assignFormData, setAssignFormData] = useState({
-		userIds: [],
-		departmentIds: []
-	});
-	const [teamMembers, setTeamMembers] = useState([]);
-	const [departments, setDepartments] = useState([]);
+    
 	const [showStatsDialog, setShowStatsDialog] = useState(false);
 	const [courseStats, setCourseStats] = useState(null);
 
-	useEffect(() => {
-		fetchCourses();
-		fetchTeamMembers();
-		fetchDepartments();
-	}, [currentPage, searchTerm, statusFilter]);
+    useEffect(() => {
+        fetchCourses();
+    }, [currentPage, searchTerm, statusFilter]);
 
 	const fetchCourses = async () => {
 		try {
@@ -142,73 +133,7 @@ function AdminCoursesPage() {
 		}
 	};
 
-	const fetchTeamMembers = async () => {
-		try {
-			console.log('🔍 Fetching team members...');
-			const response = await api.get('/admin/users');
-			console.log('📥 Team members response:', response.data);
-			console.log('📥 Team members response.data:', response.data?.data);
-			console.log('📥 Team members response.data.data:', response.data?.data?.data);
-			if (response.data && response.data.success) {
-				const usersData = response.data.data.users || response.data.data;
-				console.log('✅ Team members loaded:', usersData);
-				console.log('✅ Team members type:', typeof usersData);
-				console.log('✅ Team members is array:', Array.isArray(usersData));
-				setTeamMembers(usersData || []);
-			} else {
-				console.log('❌ Team members API returned no data or success=false');
-				setTeamMembers([]);
-			}
-		} catch (error) {
-			console.error('❌ Error fetching team members:', error);
-			setTeamMembers([]);
-		}
-	};
-
-	const fetchDepartments = async () => {
-		try {
-			console.log('🔍 Fetching departments...');
-			const response = await api.get('/admin/departments');
-			console.log('📥 Departments response:', response.data);
-			if (response.data && response.data.success) {
-				const departmentsData = response.data.data;
-				console.log('✅ Departments loaded:', departmentsData);
-				console.log('✅ Departments type:', typeof departmentsData);
-				console.log('✅ Departments is array:', Array.isArray(departmentsData));
-				setDepartments(departmentsData || []);
-			} else {
-				console.log('❌ Departments API returned no data or success=false');
-				setDepartments([]);
-			}
-		} catch (error) {
-			console.error('❌ Error fetching departments:', error);
-			setDepartments([]);
-		}
-	};
-
-	const handleAssignCourse = (course) => {
-		setCourseToAssign(course);
-		setAssignFormData({ userIds: [], departmentIds: [] });
-		setShowAssignDialog(true);
-	};
-
-	const handleAssignSubmit = async () => {
-		try {
-			await api.post(`/admin/courses/${courseToAssign.id}/assign`, assignFormData);
-			toast({
-				title: "Success",
-				description: "Course assigned successfully",
-			});
-			setShowAssignDialog(false);
-			fetchCourses();
-		} catch (error) {
-			console.error('Error assigning course:', error);
-			toast({
-				title: "Error",
-				description: "Failed to assign course",
-			});
-		}
-	};
+    
 
 	const handleCreateCourse = async () => {
 		try {
@@ -409,12 +334,24 @@ function AdminCoursesPage() {
 			<div className='space-y-6'>
 				{/* Header */}
 				<div className='mb-8'>
-					<h1 className='text-4xl font-semibold text-gray-900 dark:text-gray-100 mb-2'>
-						Course Management
-					</h1>
-					<p className='text-gray-600 dark:text-gray-400'>
-						Create, manage, and organize your e-learning courses
-					</p>
+					<div className='flex items-center justify-between'>
+						<div>
+							<h1 className='text-4xl font-semibold text-gray-900 dark:text-gray-100 mb-2'>
+								Course Management
+							</h1>
+							<p className='text-gray-600 dark:text-gray-400'>
+								Create, manage, and organize your e-learning courses
+							</p>
+						</div>
+						<Button 
+							onClick={() => navigate('/admin/enrollments')}
+							variant="outline"
+							className="flex items-center gap-2"
+						>
+							<Users className="w-4 h-4" />
+							Manage Enrollments
+						</Button>
+					</div>
 				</div>
 
 				{/* Stats Cards */}
@@ -728,13 +665,7 @@ function AdminCoursesPage() {
 											</TableCell>
 											<TableCell className='text-right'>
 												<div className='flex justify-end gap-2'>
-													<Button
-														size='sm'
-														variant='ghost'
-														onClick={() => handleAssignCourse(course)}
-														title='Assign Course to Team'>
-														<Users className='h-4 w-4' />
-													</Button>
+                                                
 													<Button
 														size='sm'
 														variant='ghost'
@@ -921,104 +852,7 @@ function AdminCoursesPage() {
 				</DialogContent>
 			</Dialog>
 
-			{/* Assign Course Dialog */}
-			<Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
-				<DialogContent className='sm:max-w-[600px] max-w-[90vw]'>
-					<DialogHeader>
-						<DialogTitle>Assign Course to Team</DialogTitle>
-						<DialogDescription>
-							Assign "{courseToAssign?.title}" to team members or departments
-						</DialogDescription>
-					</DialogHeader>
-					<div className='space-y-6'>
-						{/* Team Members Selection */}
-						<div className='space-y-3'>
-							<Label className='text-base font-medium'>Team Members</Label>
-							<div className='max-h-40 overflow-y-auto border rounded-md p-3 space-y-2'>
-								{Array.isArray(teamMembers) && teamMembers.length > 0 ? teamMembers.map((member) => (
-									<div key={member.id} className='flex items-center space-x-2'>
-										<input
-											type='checkbox'
-											id={`user-${member.id}`}
-											checked={assignFormData.userIds.includes(member.id)}
-											onChange={(e) => {
-												if (e.target.checked) {
-													setAssignFormData({
-														...assignFormData,
-														userIds: [...assignFormData.userIds, member.id]
-													});
-												} else {
-													setAssignFormData({
-														...assignFormData,
-														userIds: assignFormData.userIds.filter(id => id !== member.id)
-													});
-												}
-											}}
-											className='rounded'
-										/>
-										<Label htmlFor={`user-${member.id}`} className='text-sm'>
-											{member.first_name} {member.last_name} ({member.email})
-										</Label>
-									</div>
-								)) : (
-									<div className='text-sm text-muted-foreground text-center py-4'>
-										No team members found
-									</div>
-								)}
-							</div>
-						</div>
-
-						{/* Departments Selection */}
-						<div className='space-y-3'>
-							<Label className='text-base font-medium'>Departments</Label>
-							<div className='max-h-40 overflow-y-auto border rounded-md p-3 space-y-2'>
-								{Array.isArray(departments) && departments.length > 0 ? departments.map((dept) => (
-									<div key={dept.id} className='flex items-center space-x-2'>
-										<input
-											type='checkbox'
-											id={`dept-${dept.id}`}
-											checked={assignFormData.departmentIds.includes(dept.id)}
-											onChange={(e) => {
-												if (e.target.checked) {
-													setAssignFormData({
-														...assignFormData,
-														departmentIds: [...assignFormData.departmentIds, dept.id]
-													});
-												} else {
-													setAssignFormData({
-														...assignFormData,
-														departmentIds: assignFormData.departmentIds.filter(id => id !== dept.id)
-													});
-												}
-											}}
-											className='rounded'
-										/>
-										<Label htmlFor={`dept-${dept.id}`} className='text-sm'>
-											{dept.name}
-										</Label>
-									</div>
-								)) : (
-									<div className='text-sm text-muted-foreground text-center py-4'>
-										No departments found
-									</div>
-								)}
-							</div>
-						</div>
-					</div>
-					<DialogFooter>
-						<Button
-							variant='outline'
-							onClick={() => setShowAssignDialog(false)}>
-							Cancel
-						</Button>
-						<Button 
-							onClick={handleAssignSubmit}
-							disabled={assignFormData.userIds.length === 0 && assignFormData.departmentIds.length === 0}>
-							Assign Course
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
+            
 		</DashboardLayout>
 	);
 }

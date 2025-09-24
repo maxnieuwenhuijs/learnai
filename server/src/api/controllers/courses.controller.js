@@ -1,19 +1,17 @@
-const { Course, Module, Lesson, CourseAssignment, CourseModule, UserProgress } = require('../../models');
+const { Course, Module, Lesson, CourseAssignment, CourseModule, UserProgress, UserCourseAssignment } = require('../../models');
 const { Op } = require('sequelize');
 
 const getAssignedCourses = async (req, res) => {
     try {
         const userId = req.user.id;
         const companyId = req.user.company_id;
-        const departmentId = req.user.department_id;
 
-        // Find courses assigned to user's company or department (only published courses)
-        const courseAssignments = await CourseAssignment.findAll({
+        // Find courses directly assigned to this user (only published courses)
+        const userCourseAssignments = await UserCourseAssignment.findAll({
             where: {
-                [Op.or]: [
-                    { company_id: companyId, department_id: null },
-                    { company_id: companyId, department_id: departmentId }
-                ]
+                user_id: userId,
+                company_id: companyId,
+                is_active: true
             },
             include: [{
                 model: Course,
@@ -26,7 +24,7 @@ const getAssignedCourses = async (req, res) => {
 
         // Get progress for each course
         const coursesWithProgress = await Promise.all(
-            courseAssignments.map(async (assignment) => {
+            userCourseAssignments.map(async (assignment) => {
                 const course = assignment.course;
                 
                 // Get all lessons for this course
@@ -119,13 +117,12 @@ const getCourseDetails = async (req, res) => {
         const userId = req.user.id;
 
         // Verify user has access to this course and it's published
-        const hasAccess = await CourseAssignment.findOne({
+        const hasAccess = await UserCourseAssignment.findOne({
             where: {
+                user_id: userId,
                 course_id: courseId,
-                [Op.or]: [
-                    { company_id: req.user.company_id, department_id: null },
-                    { company_id: req.user.company_id, department_id: req.user.department_id }
-                ]
+                company_id: req.user.company_id,
+                is_active: true
             },
             include: [{
                 model: Course,

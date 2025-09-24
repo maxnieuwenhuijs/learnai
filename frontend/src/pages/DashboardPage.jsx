@@ -14,7 +14,9 @@ export function DashboardPage() {
 			case "manager":
 				return <ManagerDashboard />;
 			case "admin":
-				return <AdminDashboardFeature />;
+                // Redirect admins to the dedicated Admin Dashboard route
+                window.location.href = "/admin";
+                return null;
 			case "super_admin":
 				// Super admins should go directly to Platform Admin, not dashboard
 				window.location.href = "/admin/super-admin";

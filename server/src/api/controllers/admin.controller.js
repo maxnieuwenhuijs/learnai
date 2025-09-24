@@ -1,4 +1,4 @@
-const { User, Company, Department, Course, Module, CourseModule, Lesson, UserProgress, Certificate, Prompt, PromptCategory, PromptUsage, CompanyCourseAssignment } = require('../../models');
+const { User, Company, Department, Course, Module, CourseModule, Lesson, UserProgress, Certificate, Prompt, PromptCategory, PromptUsage, CompanyCourseAssignment, UserCourseAssignment } = require('../../models');
 const { Op } = require('sequelize');
 
 // Admin Dashboard Stats
@@ -356,7 +356,7 @@ const createUser = async (req, res) => {
         const user = await User.create({
             name,
             email,
-            password,
+            password_hash: password,
             role: role || 'participant',
             company_id: companyId,
             department_id: department_id || null
@@ -1390,7 +1390,12 @@ const rejectPrompt = async (req, res) => {
 const assignCourseToTeam = async (req, res) => {
     try {
         const companyId = req.user.company_id;
-        const { courseId, userIds, departmentIds } = req.body;
+        const { id: courseId } = req.params;
+        const { userIds, departmentIds } = req.body;
+
+        console.log('🔍 assignCourseToTeam - courseId:', courseId);
+        console.log('🔍 assignCourseToTeam - userIds:', userIds);
+        console.log('🔍 assignCourseToTeam - departmentIds:', departmentIds);
 
         if (!companyId) {
             return res.status(400).json({
@@ -1399,15 +1404,59 @@ const assignCourseToTeam = async (req, res) => {
             });
         }
 
+        if (!courseId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Course ID is required'
+            });
+        }
+
+        if ((!userIds || userIds.length === 0) && (!departmentIds || departmentIds.length === 0)) {
+            return res.status(400).json({
+                success: false,
+                message: 'At least one user or department must be selected'
+            });
+        }
+
         // Verify course belongs to company
-        const course = await Course.findOne({
-            where: { id: courseId, company_id: companyId }
+        console.log('🔍 Looking for course with id:', courseId, 'and company_id:', companyId);
+        
+        // Debug: Check all courses for this company
+        const allCourses = await Course.findAll({
+            where: { company_id: companyId },
+            attributes: ['id', 'title', 'company_id']
         });
+        console.log('🔍 All courses for company:', allCourses.map(c => ({ id: c.id, title: c.title, company_id: c.company_id })));
+        
+        // Debug: Check ALL courses in database
+        const allCoursesInDB = await Course.findAll({
+            attributes: ['id', 'title', 'company_id']
+        });
+        console.log('🔍 ALL courses in database:', allCoursesInDB.map(c => ({ id: c.id, title: c.title, company_id: c.company_id })));
+        
+        const course = await Course.findOne({
+            where: { 
+                id: courseId,
+                [Op.or]: [
+                    { company_id: companyId },
+                    { company_id: null, is_published: 1 }
+                ]
+            }
+        });
+
+        console.log('🔍 Course found:', course ? 'YES' : 'NO');
+        if (course) {
+            console.log('🔍 Course details:', {
+                id: course.id,
+                title: course.title,
+                company_id: course.company_id
+            });
+        }
 
         if (!course) {
             return res.status(404).json({
                 success: false,
-                message: 'Course not found'
+                message: 'Course not found or does not belong to your company'
             });
         }
 
@@ -1421,19 +1470,29 @@ const assignCourseToTeam = async (req, res) => {
                 });
                 
                 if (user) {
-                    const assignment = await CompanyCourseAssignment.create({
-                        course_id: courseId,
-                        company_id: companyId,
-                        user_id: userId,
-                        assigned_by: req.user.id,
-                        assigned_at: new Date()
+                    // Check if user is already enrolled
+                    const existingEnrollment = await UserCourseAssignment.findOne({
+                        where: {
+                            user_id: userId,
+                            course_id: courseId
+                        }
                     });
-                    assignments.push(assignment);
+
+                    if (!existingEnrollment) {
+                        const assignment = await UserCourseAssignment.create({
+                            user_id: userId,
+                            course_id: courseId,
+                            company_id: companyId,
+                            assigned_by: req.user.id,
+                            status: 'assigned'
+                        });
+                        assignments.push(assignment);
+                    }
                 }
             }
         }
 
-        // Assign to departments
+        // Assign to departments (enroll all users in the department)
         if (departmentIds && departmentIds.length > 0) {
             for (const departmentId of departmentIds) {
                 const department = await Department.findOne({
@@ -1441,22 +1500,45 @@ const assignCourseToTeam = async (req, res) => {
                 });
                 
                 if (department) {
-                    const assignment = await CompanyCourseAssignment.create({
-                        course_id: courseId,
-                        company_id: companyId,
-                        department_id: departmentId,
-                        assigned_by: req.user.id,
-                        assigned_at: new Date()
+                    // Get all users in this department
+                    const departmentUsers = await User.findAll({
+                        where: { 
+                            department_id: departmentId, 
+                            company_id: companyId 
+                        }
                     });
-                    assignments.push(assignment);
+
+                    // Enroll each user in the course
+                    for (const user of departmentUsers) {
+                        const existingEnrollment = await UserCourseAssignment.findOne({
+                            where: {
+                                user_id: user.id,
+                                course_id: courseId
+                            }
+                        });
+
+                        if (!existingEnrollment) {
+                            const assignment = await UserCourseAssignment.create({
+                                user_id: user.id,
+                                course_id: courseId,
+                                company_id: companyId,
+                                assigned_by: req.user.id,
+                                status: 'assigned'
+                            });
+                            assignments.push(assignment);
+                        }
+                    }
                 }
             }
         }
 
         res.json({
             success: true,
-            message: 'Course assigned successfully',
-            data: { assignments }
+            message: `Course assigned successfully to ${assignments.length} users`,
+            data: { 
+                assignments,
+                totalAssignments: assignments.length
+            }
         });
     } catch (error) {
         console.error('Error assigning course:', error);
@@ -1562,6 +1644,431 @@ const getCourseStatistics = async (req, res) => {
     }
 };
 
+// User Course Enrollment Functions
+
+// Enroll a user in a course
+const enrollUserInCourse = async (req, res) => {
+    try {
+        const { userId, courseId, dueDate, notes } = req.body;
+        const adminId = req.user.id;
+        const companyId = req.user.company_id;
+
+        // Validate required fields
+        if (!userId || !courseId) {
+            return res.status(400).json({
+                success: false,
+                message: 'User ID and Course ID are required'
+            });
+        }
+
+        // Check if user exists and belongs to the same company
+        const user = await User.findOne({
+            where: { 
+                id: userId, 
+                company_id: companyId 
+            }
+        });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found or does not belong to your company'
+            });
+        }
+
+        // Check if course exists and is eligible for this company (company course or published global)
+        const course = await Course.findOne({
+            where: {
+                id: courseId,
+                [Op.or]: [
+                    { company_id: companyId },
+                    { company_id: null, is_published: true }
+                ]
+            }
+        });
+
+        if (!course) {
+            return res.status(404).json({
+                success: false,
+                message: 'Course not found or does not belong to your company'
+            });
+        }
+
+        // Check if user is already enrolled
+        const existingEnrollment = await UserCourseAssignment.findOne({
+            where: {
+                user_id: userId,
+                course_id: courseId
+            }
+        });
+
+        if (existingEnrollment) {
+            // If enrollment exists but is inactive, reactivate it instead of creating a new one
+            if (existingEnrollment.is_active === false) {
+                await existingEnrollment.update({
+                    is_active: true,
+                    status: 'assigned',
+                    assigned_by: adminId,
+                    assigned_at: new Date(),
+                    due_date: dueDate ? new Date(dueDate) : null,
+                    notes: notes || null,
+                    completed_at: null,
+                    completion_percentage: 0.0
+                });
+
+                const updatedEnrollmentWithDetails = await UserCourseAssignment.findByPk(existingEnrollment.id, {
+                    include: [
+                        {
+                            model: User,
+                            as: 'user',
+                            attributes: ['id', 'name', 'email', 'role']
+                        },
+                        {
+                            model: Course,
+                            as: 'course',
+                            attributes: ['id', 'title', 'description', 'difficulty', 'duration_hours']
+                        },
+                        {
+                            model: User,
+                            as: 'assigner',
+                            attributes: ['id', 'name', 'email']
+                        }
+                    ]
+                });
+
+                return res.json({
+                    success: true,
+                    message: 'User re-enrolled in course',
+                    enrollment: updatedEnrollmentWithDetails
+                });
+            }
+
+            return res.status(400).json({
+                success: false,
+                message: 'User is already enrolled in this course'
+            });
+        }
+
+        // Create enrollment
+        const enrollment = await UserCourseAssignment.create({
+            user_id: userId,
+            course_id: courseId,
+            company_id: companyId,
+            assigned_by: adminId,
+            due_date: dueDate ? new Date(dueDate) : null,
+            notes: notes || null,
+            status: 'assigned'
+        });
+
+        // Fetch the enrollment with related data
+        const enrollmentWithDetails = await UserCourseAssignment.findByPk(enrollment.id, {
+            include: [
+                {
+                    model: User,
+                    as: 'user',
+                    attributes: ['id', 'name', 'email', 'role']
+                },
+                {
+                    model: Course,
+                    as: 'course',
+                    attributes: ['id', 'title', 'description', 'difficulty', 'duration_hours']
+                },
+                {
+                    model: User,
+                    as: 'assigner',
+                    attributes: ['id', 'name', 'email']
+                }
+            ]
+        });
+
+        res.json({
+            success: true,
+            message: 'User successfully enrolled in course',
+            enrollment: enrollmentWithDetails
+        });
+
+    } catch (error) {
+        console.error('Error enrolling user in course:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error enrolling user in course'
+        });
+    }
+};
+
+// Unenroll a user from a course
+const unenrollUserFromCourse = async (req, res) => {
+    try {
+        const { enrollmentId } = req.params;
+        const companyId = req.user.company_id;
+
+        // Find enrollment and verify it belongs to the admin's company
+        const enrollment = await UserCourseAssignment.findOne({
+            where: {
+                id: enrollmentId,
+                company_id: companyId
+            }
+        });
+
+        if (!enrollment) {
+            return res.status(404).json({
+                success: false,
+                message: 'Enrollment not found or does not belong to your company'
+            });
+        }
+
+        // Soft delete by setting is_active to false
+        await enrollment.update({
+            is_active: false,
+            status: 'cancelled'
+        });
+
+        res.json({
+            success: true,
+            message: 'User successfully unenrolled from course'
+        });
+
+    } catch (error) {
+        console.error('Error unenrolling user from course:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error unenrolling user from course'
+        });
+    }
+};
+
+// Get all enrollments for the company
+const getUserEnrollments = async (req, res) => {
+    try {
+        const companyId = req.user.company_id;
+        const { page = 1, limit = 10, status = 'all', search = '', courseId } = req.query;
+
+        console.log('🔍 Admin getUserEnrollments - companyId:', companyId);
+        console.log('🔍 Admin getUserEnrollments - query params:', { page, limit, status, search, courseId });
+
+        if (!companyId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Admin user must be associated with a company'
+            });
+        }
+
+        const where = { company_id: companyId, is_active: true };
+        
+        if (status !== 'all') where.status = status;
+        if (courseId) where.course_id = courseId;
+
+        // Add search functionality
+        if (search) {
+            where[Op.or] = [
+                { '$user.name$': { [Op.like]: `%${search}%` } },
+                { '$course.title$': { [Op.like]: `%${search}%` } },
+                { '$user.email$': { [Op.like]: `%${search}%` } }
+            ];
+        }
+
+        console.log('🔍 Where clause for enrollments:', where);
+
+        const enrollments = await UserCourseAssignment.findAndCountAll({
+            where,
+            include: [
+                {
+                    model: User,
+                    as: 'user',
+                    attributes: ['id', 'name', 'email', 'role', 'department_id']
+                },
+                {
+                    model: Course,
+                    as: 'course',
+                    attributes: ['id', 'title', 'description', 'difficulty', 'duration_hours']
+                },
+                {
+                    model: User,
+                    as: 'assigner',
+                    attributes: ['id', 'name', 'email']
+                }
+            ],
+            limit: parseInt(limit),
+            offset: (parseInt(page) - 1) * parseInt(limit),
+            order: [['assigned_at', 'DESC']]
+        });
+
+        console.log('📊 Found enrollments:', enrollments.count, 'total');
+        console.log('📊 Enrollments data:', enrollments.rows.map(e => ({
+            id: e.id,
+            user: e.user?.name,
+            course: e.course?.title,
+            status: e.status
+        })));
+
+        res.json({
+            success: true,
+            enrollments: enrollments.rows,
+            totalEnrollments: enrollments.count,
+            totalPages: Math.ceil(enrollments.count / parseInt(limit)),
+            currentPage: parseInt(page),
+            pagination: {
+                total: enrollments.count,
+                page: parseInt(page),
+                pages: Math.ceil(enrollments.count / parseInt(limit))
+            }
+        });
+
+    } catch (error) {
+        console.error('Error fetching user enrollments:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching user enrollments'
+        });
+    }
+};
+
+// Update enrollment status
+const updateEnrollmentStatus = async (req, res) => {
+    try {
+        const { enrollmentId } = req.params;
+        const { status, completionPercentage, notes } = req.body;
+        const companyId = req.user.company_id;
+
+        // Validate status
+        const validStatuses = ['assigned', 'in_progress', 'completed', 'overdue', 'cancelled'];
+        if (status && !validStatuses.includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid status'
+            });
+        }
+
+        // Find enrollment and verify it belongs to the admin's company
+        const enrollment = await UserCourseAssignment.findOne({
+            where: {
+                id: enrollmentId,
+                company_id: companyId
+            }
+        });
+
+        if (!enrollment) {
+            return res.status(404).json({
+                success: false,
+                message: 'Enrollment not found or does not belong to your company'
+            });
+        }
+
+        // Prepare update data
+        const updateData = {};
+        if (status) updateData.status = status;
+        if (completionPercentage !== undefined) updateData.completion_percentage = completionPercentage;
+        if (notes !== undefined) updateData.notes = notes;
+
+        // If status is completed, set completed_at
+        if (status === 'completed') {
+            updateData.completed_at = new Date();
+            updateData.completion_percentage = 100;
+        }
+
+        await enrollment.update(updateData);
+
+        // Fetch updated enrollment with related data
+        const updatedEnrollment = await UserCourseAssignment.findByPk(enrollment.id, {
+            include: [
+                {
+                    model: User,
+                    as: 'user',
+                    attributes: ['id', 'name', 'email', 'role']
+                },
+                {
+                    model: Course,
+                    as: 'course',
+                    attributes: ['id', 'title', 'description', 'difficulty', 'duration_hours']
+                },
+                {
+                    model: User,
+                    as: 'assigner',
+                    attributes: ['id', 'name', 'email']
+                }
+            ]
+        });
+
+        res.json({
+            success: true,
+            message: 'Enrollment status updated successfully',
+            enrollment: updatedEnrollment
+        });
+
+    } catch (error) {
+        console.error('Error updating enrollment status:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error updating enrollment status'
+        });
+    }
+};
+
+// Get enrollment statistics
+const getEnrollmentStatistics = async (req, res) => {
+    try {
+        const companyId = req.user.company_id;
+
+        const [
+            totalEnrollments,
+            activeEnrollments,
+            completedEnrollments,
+            overdueEnrollments,
+            inProgressEnrollments
+        ] = await Promise.all([
+            UserCourseAssignment.count({
+                where: { company_id: companyId, is_active: true }
+            }),
+            UserCourseAssignment.count({
+                where: { 
+                    company_id: companyId, 
+                    is_active: true,
+                    status: ['assigned', 'in_progress']
+                }
+            }),
+            UserCourseAssignment.count({
+                where: { 
+                    company_id: companyId, 
+                    is_active: true,
+                    status: 'completed'
+                }
+            }),
+            UserCourseAssignment.count({
+                where: { 
+                    company_id: companyId, 
+                    is_active: true,
+                    status: 'overdue'
+                }
+            }),
+            UserCourseAssignment.count({
+                where: { 
+                    company_id: companyId, 
+                    is_active: true,
+                    status: 'in_progress'
+                }
+            })
+        ]);
+
+        res.json({
+            success: true,
+            statistics: {
+                totalEnrollments,
+                activeEnrollments,
+                completedEnrollments,
+                overdueEnrollments,
+                inProgressEnrollments
+            }
+        });
+
+    } catch (error) {
+        console.error('Error fetching enrollment statistics:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching enrollment statistics'
+        });
+    }
+};
+
 module.exports = {
     getDashboardStats,
     getAnalytics,
@@ -1594,5 +2101,11 @@ module.exports = {
     approvePrompt,
     rejectPrompt,
     assignCourseToTeam,
-    getCourseStatistics
+    getCourseStatistics,
+    // User Course Enrollment Functions
+    enrollUserInCourse,
+    unenrollUserFromCourse,
+    getUserEnrollments,
+    updateEnrollmentStatus,
+    getEnrollmentStatistics
 };

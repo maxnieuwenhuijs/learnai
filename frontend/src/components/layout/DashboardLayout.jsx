@@ -4,28 +4,29 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useUnsavedChanges } from "@/contexts/UnsavedChangesContext";
 import {
-	LayoutDashboard,
-	BookOpen,
-	Users,
-	BarChart3,
-	Settings,
-	LogOut,
-	Menu,
-	X,
-	Bell,
-	Search,
-	ChevronDown,
-	GraduationCap,
-	Award,
-	Calendar,
-	HelpCircle,
-	User,
-	Sun,
-	Moon,
-	MessageSquare,
-	Building,
-	Database,
-	Shield,
+    LayoutDashboard,
+    BookOpen,
+    Users,
+    BarChart3,
+    Settings,
+    LogOut,
+    Menu,
+    X,
+    Bell,
+    Search,
+    ChevronDown,
+    GraduationCap,
+    Award,
+    Calendar,
+    HelpCircle,
+    User,
+    Sun,
+    Moon,
+    MessageSquare,
+    Building,
+    Database,
+    Shield,
+    UserCheck,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -61,7 +62,7 @@ export function DashboardLayout({ children }) {
 			title: "Dashboard",
 			icon: LayoutDashboard,
 			path: "/dashboard",
-			roles: ["participant", "manager", "admin"],
+			roles: ["participant", "manager"],
 		},
 		// Super Admin Only
 		{
@@ -101,6 +102,12 @@ export function DashboardLayout({ children }) {
 			path: "/admin/courses",
 			roles: ["admin"],
 		},
+        {
+            title: "Enrollment Management",
+            icon: UserCheck,
+            path: "/admin/enrollments",
+            roles: ["admin"],
+        },
 		// Super Admin Only
 		{
 			title: "Global Courses",
@@ -155,7 +162,7 @@ export function DashboardLayout({ children }) {
 			title: "Team",
 			icon: Users,
 			path: "/team",
-			roles: ["manager", "admin"],
+			roles: ["manager"],
 		},
 		{
 			title: "Reports",
@@ -191,7 +198,9 @@ export function DashboardLayout({ children }) {
 								navigate(
 									user?.role === "super_admin"
 										? "/admin/super-admin"
-										: "/dashboard"
+										: user?.role === "admin"
+											? "/admin"
+											: "/dashboard"
 								)
 							)
 						}>
@@ -216,44 +225,132 @@ export function DashboardLayout({ children }) {
 					</button>
 				</div>
 
-				{/* Navigation */}
-				<nav className='p-4 space-y-1'>
-					{filteredNavItems.map((item) => {
-						const Icon = item.icon;
-						const isActive = location.pathname === item.path;
-						return (
-							<div
-								key={item.path}
-								onClick={() => checkUnsavedChanges(() => navigate(item.path))}
-								className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ease-apple group active:scale-[0.98] cursor-pointer ${
-									isActive
-										? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
-										: "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200"
-								}`}>
-								<Icon
-									className={`w-5 h-5 ${
-										isActive
-											? "text-white dark:text-gray-900"
-											: "text-gray-500 dark:text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300"
-									}`}
-								/>
-								{sidebarOpen && (
-									<span
-										className={`font-medium text-sm ${
-											isActive ? "text-white dark:text-gray-900" : ""
-										}`}>
-										{item.title}
-									</span>
-								)}
-								{!sidebarOpen && (
-									<div className='absolute left-full ml-6 px-3 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm rounded-lg invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all whitespace-nowrap shadow-lg'>
-										{item.title}
-									</div>
-								)}
-							</div>
-						);
-					})}
-				</nav>
+                {/* Navigation */}
+                <nav className='p-4 space-y-1'>
+                    {user?.role === 'admin' ? (
+                        <>
+                            {/* Company section */}
+                            {sidebarOpen && (
+                                <div className='px-3 pb-1 pt-2 text-[10px] uppercase tracking-wider text-gray-400'>Company</div>
+                            )}
+                            {filteredNavItems
+                                .filter((item) => item.path.startsWith('/admin') || item.path === '/team' || item.path === '/reports')
+                                .map((item) => {
+                                    const Icon = item.icon;
+                                    const isActive = location.pathname === item.path;
+                                    return (
+                                        <div
+                                            key={item.path}
+                                            onClick={() => checkUnsavedChanges(() => navigate(item.path))}
+                                            className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ease-apple group active:scale-[0.98] cursor-pointer ${
+                                                isActive
+                                                    ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
+                                                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200"
+                                            }`}>
+                                            <Icon
+                                                className={`w-5 h-5 ${
+                                                    isActive
+                                                        ? "text-white dark:text-gray-900"
+                                                        : "text-gray-500 dark:text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300"
+                                                }`}
+                                            />
+                                            {sidebarOpen && (
+                                                <span
+                                                    className={`font-medium text-sm ${
+                                                        isActive ? "text-white dark:text-gray-900" : ""
+                                                    }`}>
+                                                    {item.title}
+                                                </span>
+                                            )}
+                                            {!sidebarOpen && (
+                                                <div className='absolute left-full ml-6 px-3 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm rounded-lg invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all whitespace-nowrap shadow-lg'>
+                                                    {item.title}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+
+                            {/* Personal section */}
+                            {sidebarOpen && (
+                                <div className='px-3 pb-1 pt-3 text-[10px] uppercase tracking-wider text-gray-400'>Personal</div>
+                            )}
+                            {filteredNavItems
+                                .filter((item) => !item.path.startsWith('/admin') && item.path !== '/team' && item.path !== '/reports')
+                                .map((item) => {
+                                    const Icon = item.icon;
+                                    const isActive = location.pathname === item.path;
+                                    return (
+                                        <div
+                                            key={item.path}
+                                            onClick={() => checkUnsavedChanges(() => navigate(item.path))}
+                                            className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ease-apple group active:scale-[0.98] cursor-pointer ${
+                                                isActive
+                                                    ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
+                                                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200"
+                                            }`}>
+                                            <Icon
+                                                className={`w-5 h-5 ${
+                                                    isActive
+                                                        ? "text-white dark:text-gray-900"
+                                                        : "text-gray-500 dark:text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300"
+                                                }`}
+                                            />
+                                            {sidebarOpen && (
+                                                <span
+                                                    className={`font-medium text-sm ${
+                                                        isActive ? "text-white dark:text-gray-900" : ""
+                                                    }`}>
+                                                    {item.title}
+                                                </span>
+                                            )}
+                                            {!sidebarOpen && (
+                                                <div className='absolute left-full ml-6 px-3 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm rounded-lg invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all whitespace-nowrap shadow-lg'>
+                                                    {item.title}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                        </>
+                    ) : (
+                        filteredNavItems.map((item) => {
+                            const Icon = item.icon;
+                            const isActive = location.pathname === item.path;
+                            return (
+                                <div
+                                    key={item.path}
+                                    onClick={() => checkUnsavedChanges(() => navigate(item.path))}
+                                    className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ease-apple group active:scale-[0.98] cursor-pointer ${
+                                        isActive
+                                            ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
+                                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200"
+                                    }`}>
+                                    <Icon
+                                        className={`w-5 h-5 ${
+                                            isActive
+                                                ? "text-white dark:text-gray-900"
+                                                : "text-gray-500 dark:text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300"
+                                        }`}
+                                    />
+                                    {sidebarOpen && (
+                                        <span
+                                            className={`font-medium text-sm ${
+                                                isActive ? "text-white dark:text-gray-900" : ""
+                                            }`}>
+                                            {item.title}
+                                        </span>
+                                    )}
+                                    {!sidebarOpen && (
+                                        <div className='absolute left-full ml-6 px-3 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm rounded-lg invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all whitespace-nowrap shadow-lg'>
+                                            {item.title}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })
+                    )}
+                </nav>
 
 				{/* Help Section */}
 				{sidebarOpen && (
@@ -290,7 +387,7 @@ export function DashboardLayout({ children }) {
 				<div className='flex items-center justify-between h-16 px-6 border-b border-gray-200 dark:border-gray-700'>
 					<div
 						className='flex items-center gap-3 group cursor-pointer'
-						onClick={() => checkUnsavedChanges(() => navigate("/dashboard"))}>
+						onClick={() => checkUnsavedChanges(() => navigate(user?.role === "super_admin" ? "/admin/super-admin" : user?.role === "admin" ? "/admin" : "/dashboard"))}>
 						<div className='w-10 h-10 bg-gray-900 dark:bg-gray-100 rounded-lg flex items-center justify-center transition-all duration-200 ease-apple group-hover:scale-105 group-active:scale-95 shadow-sm'>
 							<GraduationCap className='w-6 h-6 text-white dark:text-gray-900 transition-transform group-hover:rotate-12' />
 						</div>
@@ -309,41 +406,118 @@ export function DashboardLayout({ children }) {
 						<X className='w-5 h-5 text-gray-500 dark:text-gray-400' />
 					</button>
 				</div>
-				<nav className='p-4 space-y-1'>
-					{filteredNavItems.map((item) => {
-						const Icon = item.icon;
-						const isActive = location.pathname === item.path;
-						return (
-							<div
-								key={item.path}
-								onClick={() =>
-									checkUnsavedChanges(() => {
-										navigate(item.path);
-										setMobileMenuOpen(false);
-									})
-								}
-								className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all cursor-pointer ${
-									isActive
-										? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"
-										: "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-								}`}>
-								<Icon
-									className={`w-5 h-5 ${
-										isActive
-											? "text-indigo-600 dark:text-indigo-400"
-											: "text-gray-400 dark:text-gray-500"
-									}`}
-								/>
-								<span
-									className={`font-medium ${
-										isActive ? "text-indigo-600 dark:text-indigo-400" : ""
-									}`}>
-									{item.title}
-								</span>
-							</div>
-						);
-					})}
-				</nav>
+                <nav className='p-4 space-y-1'>
+                    {user?.role === 'admin' ? (
+                        <>
+                            <div className='px-3 pb-1 pt-2 text-[10px] uppercase tracking-wider text-gray-400'>Company</div>
+                            {filteredNavItems
+                                .filter((item) => item.path.startsWith('/admin') || item.path === '/team' || item.path === '/reports')
+                                .map((item) => {
+                                    const Icon = item.icon;
+                                    const isActive = location.pathname === item.path;
+                                    return (
+                                        <div
+                                            key={item.path}
+                                            onClick={() =>
+                                                checkUnsavedChanges(() => {
+                                                    navigate(item.path);
+                                                    setMobileMenuOpen(false);
+                                                })
+                                            }
+                                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all cursor-pointer ${
+                                                isActive
+                                                    ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"
+                                                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                            }`}>
+                                            <Icon
+                                                className={`w-5 h-5 ${
+                                                    isActive
+                                                        ? "text-indigo-600 dark:text-indigo-400"
+                                                        : "text-gray-400 dark:text-gray-500"
+                                                }`}
+                                            />
+                                            <span
+                                                className={`font-medium ${
+                                                    isActive ? "text-indigo-600 dark:text-indigo-400" : ""
+                                                }`}>
+                                                {item.title}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            <div className='px-3 pb-1 pt-3 text-[10px] uppercase tracking-wider text-gray-400'>Personal</div>
+                            {filteredNavItems
+                                .filter((item) => !item.path.startsWith('/admin') && item.path !== '/team' && item.path !== '/reports')
+                                .map((item) => {
+                                    const Icon = item.icon;
+                                    const isActive = location.pathname === item.path;
+                                    return (
+                                        <div
+                                            key={item.path}
+                                            onClick={() =>
+                                                checkUnsavedChanges(() => {
+                                                    navigate(item.path);
+                                                    setMobileMenuOpen(false);
+                                                })
+                                            }
+                                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all cursor-pointer ${
+                                                isActive
+                                                    ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"
+                                                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                            }`}>
+                                            <Icon
+                                                className={`w-5 h-5 ${
+                                                    isActive
+                                                        ? "text-indigo-600 dark:text-indigo-400"
+                                                        : "text-gray-400 dark:text-gray-500"
+                                                }`}
+                                            />
+                                            <span
+                                                className={`font-medium ${
+                                                    isActive ? "text-indigo-600 dark:text-indigo-400" : ""
+                                                }`}>
+                                                {item.title}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                        </>
+                    ) : (
+                        filteredNavItems.map((item) => {
+                            const Icon = item.icon;
+                            const isActive = location.pathname === item.path;
+                            return (
+                                <div
+                                    key={item.path}
+                                    onClick={() =>
+                                        checkUnsavedChanges(() => {
+                                            navigate(item.path);
+                                            setMobileMenuOpen(false);
+                                        })
+                                    }
+                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all cursor-pointer ${
+                                        isActive
+                                            ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"
+                                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                    }`}>
+                                    <Icon
+                                        className={`w-5 h-5 ${
+                                            isActive
+                                                ? "text-indigo-600 dark:text-indigo-400"
+                                                : "text-gray-400 dark:text-gray-500"
+                                        }`}
+                                    />
+                                    <span
+                                        className={`font-medium ${
+                                            isActive ? "text-indigo-600 dark:text-indigo-400" : ""
+                                        }`}>
+                                        {item.title}
+                                    </span>
+                                </div>
+                            );
+                        })
+                    )}
+                </nav>
 			</aside>
 
 			{/* Main Content */}

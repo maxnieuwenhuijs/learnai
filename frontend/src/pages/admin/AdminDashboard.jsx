@@ -23,6 +23,7 @@ import {
 	BarChart3,
 	Settings,
 	MessageSquare,
+	UserCheck,
 } from "lucide-react";
 
 export function AdminDashboard() {
@@ -201,6 +202,17 @@ export function AdminDashboard() {
 						<CardContent>
 							<p className='text-xs text-muted-foreground'>
 								Manage AI prompts for your company
+							</p>
+						</CardContent>
+					</Card>
+					<Card className='cursor-pointer hover:shadow-md transition-shadow' onClick={() => navigate('/admin/enrollments')}>
+						<CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+							<CardTitle className='text-sm font-medium'>Enrollment Management</CardTitle>
+							<UserCheck className='h-4 w-4 text-muted-foreground' />
+						</CardHeader>
+						<CardContent>
+							<p className='text-xs text-muted-foreground'>
+								Manage user course enrollments and progress
 							</p>
 						</CardContent>
 					</Card>

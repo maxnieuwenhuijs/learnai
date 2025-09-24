@@ -28,6 +28,9 @@ import {
 	Trash2,
 	Mail,
 	Calendar,
+	Activity,
+	Award as AwardIcon,
+	BookOpen as BookOpenIcon
 } from "lucide-react";
 
 export function AdminUsersPage() {
@@ -40,6 +43,7 @@ export function AdminUsersPage() {
 	const [currentPage, setCurrentPage] = useState(1);
 	const [totalPages, setTotalPages] = useState(1);
 	const [showCreateDialog, setShowCreateDialog] = useState(false);
+	const [teamStats, setTeamStats] = useState({ totalMembers: 0, activeUsers: 0, totalCertificates: 0, totalCourses: 0 });
 	const [userFormData, setUserFormData] = useState({
 		name: "",
 		email: "",
@@ -51,6 +55,7 @@ export function AdminUsersPage() {
 	useEffect(() => {
 		loadUsers();
 		loadDepartments();
+		loadTopStats();
 	}, [currentPage, searchTerm, selectedRole]);
 
 	const loadUsers = async () => {
@@ -92,6 +97,22 @@ export function AdminUsersPage() {
 		} catch (error) {
 			console.error("Error loading departments:", error);
 			setDepartments([]);
+		}
+	};
+
+	const loadTopStats = async () => {
+		try {
+			// Reuse admin dashboard endpoint for quick stats
+			const res = await api.get('/admin/dashboard');
+			const data = res.data?.data || {};
+			setTeamStats({
+				totalMembers: data.totalUsers || 0,
+				activeUsers: data.activeUsers || 0,
+				totalCertificates: data.totalCertificates || 0,
+				totalCourses: data.totalCourses || 0,
+			});
+		} catch (e) {
+			setTeamStats({ totalMembers: 0, activeUsers: 0, totalCertificates: 0, totalCourses: 0 });
 		}
 	};
 
@@ -141,6 +162,41 @@ export function AdminUsersPage() {
 	return (
 		<DashboardLayout>
 			<div className='space-y-6'>
+				{/* Combined Team/Company Stats */}
+				<div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
+					<Card>
+						<CardHeader className='pb-2'>
+							<CardTitle className='text-sm font-medium flex items-center gap-2'><Users className='h-4 w-4' /> Team Members</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<div className='text-2xl font-bold'>{teamStats.totalMembers}</div>
+						</CardContent>
+					</Card>
+					<Card>
+						<CardHeader className='pb-2'>
+							<CardTitle className='text-sm font-medium flex items-center gap-2'><Activity className='h-4 w-4' /> Active Users</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<div className='text-2xl font-bold'>{teamStats.activeUsers}</div>
+						</CardContent>
+					</Card>
+					<Card>
+						<CardHeader className='pb-2'>
+							<CardTitle className='text-sm font-medium flex items-center gap-2'><BookOpenIcon className='h-4 w-4' /> Courses</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<div className='text-2xl font-bold'>{teamStats.totalCourses}</div>
+						</CardContent>
+					</Card>
+					<Card>
+						<CardHeader className='pb-2'>
+							<CardTitle className='text-sm font-medium flex items-center gap-2'><AwardIcon className='h-4 w-4' /> Certificates</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<div className='text-2xl font-bold'>{teamStats.totalCertificates}</div>
+						</CardContent>
+					</Card>
+				</div>
 				<div className='flex items-center justify-between'>
 					<div>
 						<h1 className='text-3xl font-bold tracking-tight'>User Management</h1>

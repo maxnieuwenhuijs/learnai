@@ -124,12 +124,13 @@ export function PromptsPage() {
 			);
 		}
 
-		// Filter by prompt type
-		if (promptType === "personal") {
-			filtered = filtered.filter((prompt) => prompt.created_by === user?.id);
-		} else if (promptType === "company") {
-			filtered = filtered.filter((prompt) => prompt.is_company_prompt);
-		}
+        // Filter by prompt type
+        if (promptType === "personal") {
+            filtered = filtered.filter((prompt) => prompt.created_by === user?.id);
+        } else if (promptType === "company") {
+            // Treat prompts created by others (and visible to this user) as company prompts
+            filtered = filtered.filter((prompt) => prompt.created_by !== user?.id);
+        }
 
 		return filtered;
 	};
@@ -466,21 +467,15 @@ export function PromptsPage() {
 																{category?.name}
 															</Badge>
 														</div>
-														<div className='flex items-center gap-1'>
-															{prompt.created_by === user?.id ? (
-																<Badge
-																	variant='secondary'
-																	className='text-xs bg-blue-100 text-blue-700 border-blue-200'>
-																	Persoonlijke Prompt
-																</Badge>
-															) : (
-																<Badge
-																	variant='secondary'
-																	className='text-xs bg-green-100 text-green-700 border-green-200'>
-																	Bedrijf
-																</Badge>
-															)}
-															{prompt.is_template && (
+                                            <div className='flex items-center gap-1'>
+                                                {prompt.created_by !== user?.id && (
+                                                    <Badge
+                                                        variant='secondary'
+                                                        className='text-xs bg-green-100 text-green-700 border-green-200'>
+                                                        Bedrijf
+                                                    </Badge>
+                                                )}
+                                                {prompt.is_template && (
 																<Badge
 																	variant='secondary'
 																	className='text-xs bg-gray-100 text-gray-600'>
